@@ -35,7 +35,8 @@ impl Simulation {
             self.velocities.view(),
             self.nonadiabatic_arr.view(),
         );
-        write_restart_custom(&restart);
+        write_restart(&restart);
+        // write_restart_custom(&restart);
 
         let xyz_output: XYZ_Output = XYZ_Output::new(
             self.n_atoms,
@@ -184,8 +185,8 @@ impl Simulation {
                 self.velocities.view(),
                 self.nonadiabatic_arr.view(),
             );
-            // write_restart(&restart);
-            write_restart_custom(&restart);
+            write_restart(&restart);
+            // write_restart_custom(&restart);
 
             let xyz_output: XYZ_Output = XYZ_Output::new(
                 self.n_atoms,
@@ -261,7 +262,8 @@ impl Simulation {
             self.velocities.view(),
             self.nonadiabatic_arr.view(),
         );
-        write_restart_custom(&restart);
+        write_restart(&restart);
+        // write_restart_custom(&restart);
 
         let xyz_output: XYZ_Output = XYZ_Output::new(
             self.n_atoms,
@@ -406,8 +408,8 @@ impl Simulation {
                 self.velocities.view(),
                 self.nonadiabatic_arr.view(),
             );
-            // write_restart(&restart);
-            write_restart_custom(&restart);
+            write_restart(&restart);
+            // write_restart_custom(&restart);
 
             let xyz_output: XYZ_Output = XYZ_Output::new(
                 self.n_atoms,
