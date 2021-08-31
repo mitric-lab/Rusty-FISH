@@ -34,6 +34,7 @@ impl Simulation {
             self.coordinates.view(),
             self.velocities.view(),
             self.nonadiabatic_arr.view(),
+            self.coefficients.view(),
         );
         write_restart(&restart);
         // write_restart_custom(&restart);
@@ -184,6 +185,7 @@ impl Simulation {
                 self.coordinates.view(),
                 self.velocities.view(),
                 self.nonadiabatic_arr.view(),
+                self.coefficients.view(),
             );
             write_restart(&restart);
             // write_restart_custom(&restart);
@@ -261,6 +263,7 @@ impl Simulation {
             self.coordinates.view(),
             self.velocities.view(),
             self.nonadiabatic_arr.view(),
+            self.coefficients.view(),
         );
         write_restart(&restart);
         // write_restart_custom(&restart);
@@ -407,6 +410,7 @@ impl Simulation {
                 self.coordinates.view(),
                 self.velocities.view(),
                 self.nonadiabatic_arr.view(),
+                self.coefficients.view(),
             );
             write_restart(&restart);
             // write_restart_custom(&restart);
@@ -537,10 +541,11 @@ impl Simulation {
     }
 
     pub fn restart_trajectory(&mut self){
-        let temp:(Array2<f64>,Array2<f64>,Array3<f64>) = read_restart_parameters();
+        let temp:(Array2<f64>,Array2<f64>,Array3<f64>,Array1<c64>) = read_restart_parameters();
         self.coordinates = temp.0;
         self.velocities = temp.1;
         self.nonadiabatic_arr_old = temp.2;
+        self.coefficients = temp.3;
 
         self.coordinates = self.shift_to_center_of_mass();
         self.velocities = self.eliminate_translation_rotation_from_velocity();

@@ -108,6 +108,7 @@ pub struct Restart_Output {
     pub coordinates: Array2<f64>,
     pub velocities: Array2<f64>,
     pub nonadiabatic_arr:Array3<f64>,
+    pub coefficients: Array1<c64>,
 }
 
 impl Restart_Output {
@@ -116,12 +117,14 @@ impl Restart_Output {
         coordinates: ArrayView2<f64>,
         velocities: ArrayView2<f64>,
         nonadiabatic_arr:ArrayView3<f64>,
+        coefficients: ArrayView1<c64>,
     ) -> Restart_Output {
         Restart_Output {
             n_atoms: n_atoms,
             coordinates: coordinates.to_owned() * constants::BOHR_TO_ANGS,
             velocities: velocities.to_owned(),
             nonadiabatic_arr:nonadiabatic_arr.to_owned(),
+            coefficients:coefficients.to_owned(),
         }
     }
 }

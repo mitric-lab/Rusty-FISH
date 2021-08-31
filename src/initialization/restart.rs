@@ -5,9 +5,10 @@ use ndarray::prelude::*;
 use std::path::Path;
 use serde_yaml;
 use std::fs;
+use ndarray_linalg::c64;
 
 // Read restart parameters from a file
-pub fn read_restart_parameters()->(Array2<f64>,Array2<f64>,Array3<f64>){
+pub fn read_restart_parameters()->(Array2<f64>,Array2<f64>,Array3<f64>,Array1<c64>){
     let restart_file_path: &Path = Path::new(defaults::RESTART_FILE_NAME);
     // check if file exists
     let mut restart_string: String = if restart_file_path.exists() {
@@ -22,6 +23,7 @@ pub fn read_restart_parameters()->(Array2<f64>,Array2<f64>,Array3<f64>){
     let coordinates:Array2<f64> = restart.coordinates;
     let velocities:Array2<f64> = restart.velocities;
     let nonadiabatic_arr:Array3<f64> = restart.nonadiabatic_arr;
+    let coefficients:Array1<c64> = restart.coefficients;
 
-    return (coordinates, velocities, nonadiabatic_arr);
+    return (coordinates, velocities, nonadiabatic_arr,coefficients);
 }
