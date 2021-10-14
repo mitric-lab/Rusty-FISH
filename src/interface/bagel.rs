@@ -11,6 +11,7 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::process::{Command, Output};
 use std::{env, fs};
+use crate::initialization::SystemData;
 
 #[derive(Clone)]
 pub struct Bagel_Handler {
@@ -25,6 +26,19 @@ pub struct Bagel_Handler {
     pub energies: Array1<f64>,
     pub nad_coupling: Array3<f64>,
     pub transition_dipoles: Array3<f64>,
+}
+
+impl From<&SystemData> for Bagel_Handler{
+    fn from(data:&SystemData) -> Self {
+        let nstates = data.config.nstates;
+        Self::new(
+            &data.atomic_numbers,
+            data.masses.view(),
+            nstates,data.config.gs_dynamic,
+            data.coordinates.view(),
+            data.config.initial_state
+        )
+    }
 }
 
 impl Bagel_Handler {

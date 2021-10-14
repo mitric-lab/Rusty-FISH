@@ -19,6 +19,7 @@ use crate::initialization::SystemData;
 use crate::interface::bagel::*;
 use chemfiles::Frame;
 use ndarray::Array2;
+use crate::interface::QuantumChemistryInterface;
 
 mod constants;
 mod defaults;
@@ -87,6 +88,8 @@ fn main() {
     // Generate system
     let system: SystemData = SystemData::from((frame, config.clone()));
     // Initialize dynamics
+    let mut handler:Bagel_Handler = Bagel_Handler::from(&system);
     let mut dynamic: Simulation = Simulation::new(config, &system);
-    dynamic.verlet_dynamics();
+    // let mut dynamic: Simulation = Simulation::new(config, &system,Box::new(handler));
+    dynamic.verlet_dynamics(&mut handler);
 }

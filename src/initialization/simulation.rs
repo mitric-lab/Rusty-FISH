@@ -5,6 +5,7 @@ use crate::initialization::Configuration;
 use crate::interface::bagel::*;
 use ndarray::prelude::*;
 use ndarray_linalg::c64;
+use crate::interface::QuantumChemistryInterface;
 
 pub struct Simulation {
     pub stepsize: f64,
@@ -31,14 +32,20 @@ pub struct Simulation {
     pub dipole_old: Array3<f64>,
     pub state: usize,
     pub time_coupling: f64,
-    pub handler: Option<Bagel_Handler>,
     pub saved_p_rand: Array2<f64>,
     pub saved_efactor: Array1<f64>,
     pub start_econst: f64,
+    // pub handler: Option<Bagel_Handler>,
+    // pub interface:Box<QuantumChemistryInterface>
+    // interface:QuantumChemistryInterface,
 }
 
 impl Simulation {
-    pub fn new(config: Configuration, system: &SystemData) -> Simulation {
+    pub fn new(
+        config: Configuration,
+        system: &SystemData,
+        // interface:Box<QuantumChemistryInterface>,
+    ) -> Simulation {
         let stepsize_au: f64 = config.stepsize * constants::FS_TO_AU;
         let delta_runge_kutta: f64 = stepsize_au / config.n_small_steps as f64;
 
@@ -97,10 +104,11 @@ impl Simulation {
             s_mat: s_mat,
             dipole: dipole.clone(),
             dipole_old: dipole,
-            handler: None,
             saved_efactor: efactor,
             saved_p_rand: saved_p_rand,
             start_econst: econst,
+            // handler: None,
+            // interface:interface,
         }
     }
 }

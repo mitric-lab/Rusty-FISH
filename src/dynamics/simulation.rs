@@ -8,13 +8,17 @@ use crate::output::*;
 use ndarray::prelude::*;
 use ndarray_linalg::c64;
 use crate::initialization::restart::read_restart_parameters;
+use crate::interface::QuantumChemistryInterface;
 
 impl Simulation {
-    pub fn verlet_dynamics(&mut self) {
+    pub fn verlet_dynamics<D:QuantumChemistryInterface>(
+        &mut self,
+        interface:&mut D,
+    ) {
         if self.config.inputflag == "new" {
-            self.initiate_trajectory();
+            self.initiate_trajectory(interface);
         } else if self.config.inputflag == "restart" {
-            self.restart_trajectory();
+            self.restart_trajectory(interface);
         }
         else{
             panic!("The inputflag must be either 'new' or 'restart'");
@@ -92,7 +96,7 @@ impl Simulation {
 
             // calculate energies, forces, dipoles, nonadiabatic_scalar
             // for the new geometry
-            self.get_quantum_chem_data();
+            self.get_quantum_chem_data(interface);
 
             if self.config.extrapolate_forces == true {
                 let index: usize = (step - 1).rem_euclid(3);
@@ -239,11 +243,11 @@ impl Simulation {
         }
     }
 
-    pub fn langevin_dynamics(&mut self) {
+    pub fn langevin_dynamics<D:QuantumChemistryInterface>(&mut self,interface:&mut D) {
         if self.config.inputflag == "new" {
-            self.initiate_trajectory();
+            self.initiate_trajectory(interface);
         } else if self.config.inputflag == "restart" {
-            self.restart_trajectory();
+            self.restart_trajectory(interface);
         }
         else{
             panic!("The inputflag must be either 'new' or 'restart'");
@@ -325,7 +329,7 @@ impl Simulation {
 
             // calculate energies, forces, dipoles, nonadiabatic_scalar
             // for the new geometry
-            self.get_quantum_chem_data();
+            self.get_quantum_chem_data(interface);
 
             if self.config.extrapolate_forces == true {
                 let index: usize = (step - 1).rem_euclid(3);
@@ -463,19 +467,25 @@ impl Simulation {
         }
     }
 
-    pub fn initialize_quantum_chem_interface(&mut self) {
+    pub fn initialize_quantum_chem_interface<D:QuantumChemistryInterface>(&mut self,interface:&mut D) {
         // initialize tincr/bagel etc.
-        let mut handler: Bagel_Handler = Bagel_Handler::new(
-            &self.atomic_numbers,
-            self.masses.view(),
-            self.config.nstates,
-            self.config.gs_dynamic,
-            self.coordinates.view(),
-            self.state,
-        );
+        // let mut handler: Bagel_Handler = Bagel_Handler::new(
+        //     &self.atomic_numbers,
+        //     self.masses.view(),
+        //     self.config.nstates,
+        //     self.config.gs_dynamic,
+        //     self.coordinates.view(),
+        //     self.state,
+        // );
+
+        // let tmp: (Array1<f64>, Array2<f64>, Array3<f64>, Array3<f64>) =
+        //     self.interface.compute_data(self.coordinates.view(), self.state);
 
         let tmp: (Array1<f64>, Array2<f64>, Array3<f64>, Array3<f64>) =
-            handler.get_all(self.coordinates.view(), self.state);
+            interface.compute_data(self.coordinates.view(), self.state);
+
+        // let tmp: (Array1<f64>, Array2<f64>, Array3<f64>, Array3<f64>) =
+        //     handler.get_all(self.coordinates.view(), self.state);
         self.energies = tmp.0;
         self.forces = tmp.1.mapv(|val| (val * 1.0e9).round() / 1.0e9);
         self.nonadiabatic_arr = tmp.2.clone();
@@ -496,15 +506,21 @@ impl Simulation {
         self.nonadiabatic_scalar_old = self.nonadiabatic_scalar.clone();
         self.s_mat = self.nonadiabatic_scalar.clone() * self.stepsize;
 
-        self.handler = Some(handler);
+        // self.handler = Some(handler);
     }
 
-    pub fn get_quantum_chem_data(&mut self) {
+    pub fn get_quantum_chem_data<D:QuantumChemistryInterface>(&mut self,interface:&mut D) {
         // calculate energy, forces, etc for new coords
-        let mut handler: Bagel_Handler = self.handler.clone().unwrap();
+        // let mut handler: Bagel_Handler = self.handler.clone().unwrap();
+
+        // let tmp: (Array1<f64>, Array2<f64>, Array3<f64>, Array3<f64>) =
+        //     self.interface.compute_data(self.coordinates.view(), self.state);
 
         let tmp: (Array1<f64>, Array2<f64>, Array3<f64>, Array3<f64>) =
-            handler.get_all(self.coordinates.view(), self.state);
+            interface.compute_data(self.coordinates.view(), self.state);
+
+        // let tmp: (Array1<f64>, Array2<f64>, Array3<f64>, Array3<f64>) =
+        //     handler.get_all(self.coordinates.view(), self.state);
         self.energies = tmp.0;
         self.forces = tmp.1.mapv(|val| (val * 1.0e9).round() / 1.0e9);
         self.nonadiabatic_arr = tmp.2;
@@ -531,16 +547,16 @@ impl Simulation {
         self.s_mat = self.nonadiabatic_scalar.clone() * self.stepsize;
     }
 
-    pub fn initiate_trajectory(&mut self) {
+    pub fn initiate_trajectory<D:QuantumChemistryInterface>(&mut self,interface:&mut D) {
         self.coordinates = self.shift_to_center_of_mass();
         self.velocities = self.eliminate_translation_rotation_from_velocity();
 
-        self.initialize_quantum_chem_interface();
+        self.initialize_quantum_chem_interface(interface);
 
         self.kinetic_energy = self.get_kinetic_energy();
     }
 
-    pub fn restart_trajectory(&mut self){
+    pub fn restart_trajectory<D:QuantumChemistryInterface>(&mut self,interface:&mut D){
         let temp:(Array2<f64>,Array2<f64>,Array3<f64>,Array1<c64>) = read_restart_parameters();
         self.coordinates = temp.0;
         self.velocities = temp.1;
@@ -550,18 +566,19 @@ impl Simulation {
         self.coordinates = self.shift_to_center_of_mass();
         self.velocities = self.eliminate_translation_rotation_from_velocity();
 
-        // initialize tincr/bagel etc.
-        let mut handler: Bagel_Handler = Bagel_Handler::new(
-            &self.atomic_numbers,
-            self.masses.view(),
-            self.config.nstates,
-            self.config.gs_dynamic,
-            self.coordinates.view(),
-            self.state,
-        );
-        self.handler = Some(handler);
+        // // initialize tincr/bagel etc.
+        // let mut handler: Bagel_Handler = Bagel_Handler::new(
+        //     &self.atomic_numbers,
+        //     self.masses.view(),
+        //     self.config.nstates,
+        //     self.config.gs_dynamic,
+        //     self.coordinates.view(),
+        //     self.state,
+        // );
+        // self.handler = Some(handler);
+
         // calculate quantum chemical data
-        self.get_quantum_chem_data();
+        self.get_quantum_chem_data(interface);
 
         self.kinetic_energy = self.get_kinetic_energy();
     }
