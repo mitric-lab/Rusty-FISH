@@ -6,7 +6,7 @@ use ndarray_linalg::{into_col, into_row, solve, Inverse};
 use rand::Rng;
 use rand_distr::{Distribution, Normal};
 
-impl Simulation {
+impl Simulation<'_> {
     pub fn get_random_terms(&self) -> (Array2<f64>, Array2<f64>) {
         let n_at: usize = self.masses.len();
         let gdt: Array1<f64> = self.stepsize * &self.friction;

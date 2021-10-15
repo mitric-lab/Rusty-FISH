@@ -262,7 +262,7 @@ pub fn frame_to_coordinates(frame: Frame) -> (Vec<u8>, Array2<f64>) {
     positions = positions / constants::BOHR_TO_ANGS;
     // read the atomic number of each coordinate
     let atomic_numbers: Vec<u8> = (0..frame.size() as u64)
-        .map(|i| frame.atom(i).atomic_number() as u8)
+        .map(|i | frame.atom(i as usize).atomic_number() as u8)
         .collect();
 
     // let mut smiles_repr: Trajectory = Trajectory::memory_writer("SMI").unwrap();

@@ -9,7 +9,7 @@ use rand::distributions::Standard;
 use rand::prelude::*;
 use std::ops::DivAssign;
 
-impl Simulation {
+impl Simulation<'_> {
     pub fn get_new_state(&mut self, old_coefficients: ArrayView1<c64>) {
         let nstates: usize = self.config.nstates;
         let mut occupations: Array1<f64> = Array1::zeros(nstates);

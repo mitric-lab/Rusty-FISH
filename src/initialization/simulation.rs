@@ -7,7 +7,7 @@ use ndarray::prelude::*;
 use ndarray_linalg::c64;
 use crate::interface::QuantumChemistryInterface;
 
-pub struct Simulation {
+pub struct Simulation<'a> {
     pub stepsize: f64,
     pub delta_runge_kutta: f64,
     pub total_mass: f64,
@@ -35,17 +35,18 @@ pub struct Simulation {
     pub saved_p_rand: Array2<f64>,
     pub saved_efactor: Array1<f64>,
     pub start_econst: f64,
+    pub interface:&'a mut QuantumChemistryInterface,
     // pub handler: Option<Bagel_Handler>,
     // pub interface:Box<QuantumChemistryInterface>
     // interface:QuantumChemistryInterface,
 }
 
-impl Simulation {
+impl<'a> Simulation<'a> {
     pub fn new(
         config: Configuration,
         system: &SystemData,
-        // interface:Box<QuantumChemistryInterface>,
-    ) -> Simulation {
+        interface:&'a mut QuantumChemistryInterface,
+    ) -> Simulation<'a> {
         let stepsize_au: f64 = config.stepsize * constants::FS_TO_AU;
         let delta_runge_kutta: f64 = stepsize_au / config.n_small_steps as f64;
 
@@ -107,8 +108,7 @@ impl Simulation {
             saved_efactor: efactor,
             saved_p_rand: saved_p_rand,
             start_econst: econst,
-            // handler: None,
-            // interface:interface,
+            interface:interface,
         }
     }
 }
