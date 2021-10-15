@@ -9,8 +9,10 @@ use ndarray::prelude::*;
 use ndarray_linalg::c64;
 use crate::initialization::restart::read_restart_parameters;
 
-impl Simulation {
-    pub fn verlet_dynamics(&mut self) {
+impl Simulation<'_> {
+    pub fn verlet_dynamics(
+        &mut self,
+    ) {
         if self.config.inputflag == "new" {
             self.initiate_trajectory();
         } else if self.config.inputflag == "restart" {
@@ -463,19 +465,10 @@ impl Simulation {
         }
     }
 
-    pub fn initialize_quantum_chem_interface(&mut self) {
-        // initialize tincr/bagel etc.
-        let mut handler: Bagel_Handler = Bagel_Handler::new(
-            &self.atomic_numbers,
-            self.masses.view(),
-            self.config.nstates,
-            self.config.gs_dynamic,
-            self.coordinates.view(),
-            self.state,
-        );
-
+    pub fn initialize_quantum_chem_interface(&mut self,) {
         let tmp: (Array1<f64>, Array2<f64>, Array3<f64>, Array3<f64>) =
-            handler.get_all(self.coordinates.view(), self.state);
+            self.interface.compute_data(self.coordinates.view(), self.state);
+
         self.energies = tmp.0;
         self.forces = tmp.1.mapv(|val| (val * 1.0e9).round() / 1.0e9);
         self.nonadiabatic_arr = tmp.2.clone();
@@ -495,16 +488,15 @@ impl Simulation {
 
         self.nonadiabatic_scalar_old = self.nonadiabatic_scalar.clone();
         self.s_mat = self.nonadiabatic_scalar.clone() * self.stepsize;
-
-        self.handler = Some(handler);
     }
 
     pub fn get_quantum_chem_data(&mut self) {
         // calculate energy, forces, etc for new coords
-        let mut handler: Bagel_Handler = self.handler.clone().unwrap();
+        // let mut handler: Bagel_Handler = self.handler.clone().unwrap();
 
         let tmp: (Array1<f64>, Array2<f64>, Array3<f64>, Array3<f64>) =
-            handler.get_all(self.coordinates.view(), self.state);
+            self.interface.compute_data(self.coordinates.view(), self.state);
+
         self.energies = tmp.0;
         self.forces = tmp.1.mapv(|val| (val * 1.0e9).round() / 1.0e9);
         self.nonadiabatic_arr = tmp.2;
@@ -550,16 +542,6 @@ impl Simulation {
         self.coordinates = self.shift_to_center_of_mass();
         self.velocities = self.eliminate_translation_rotation_from_velocity();
 
-        // initialize tincr/bagel etc.
-        let mut handler: Bagel_Handler = Bagel_Handler::new(
-            &self.atomic_numbers,
-            self.masses.view(),
-            self.config.nstates,
-            self.config.gs_dynamic,
-            self.coordinates.view(),
-            self.state,
-        );
-        self.handler = Some(handler);
         // calculate quantum chemical data
         self.get_quantum_chem_data();
 

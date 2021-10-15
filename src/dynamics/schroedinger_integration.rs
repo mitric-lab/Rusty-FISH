@@ -13,7 +13,7 @@ use std::fs;
 use std::path::Path;
 use toml;
 
-impl Simulation {
+impl Simulation<'_> {
     pub fn get_hopping_fortran(&self, actual_step: f64) -> Array1<c64> {
         // Initialization
         let old_nonadiabatic_scalar: Array2<f64> = -1.0 * &self.nonadiabatic_scalar_old;
