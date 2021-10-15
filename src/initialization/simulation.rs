@@ -1,7 +1,7 @@
 use crate::constants;
 use crate::initialization::system::SystemData;
 use crate::initialization::velocities::*;
-use crate::initialization::Configuration;
+use crate::initialization::DynamicConfiguration;
 use crate::interface::bagel::*;
 use ndarray::prelude::*;
 use ndarray_linalg::c64;
@@ -11,7 +11,7 @@ pub struct Simulation<'a> {
     pub stepsize: f64,
     pub delta_runge_kutta: f64,
     pub total_mass: f64,
-    pub config: Configuration,
+    pub config: DynamicConfiguration,
     pub coefficients: Array1<c64>,
     pub coordinates: Array2<f64>,
     pub masses: Array1<f64>,
@@ -43,10 +43,10 @@ pub struct Simulation<'a> {
 
 impl<'a> Simulation<'a> {
     pub fn new(
-        config: Configuration,
         system: &SystemData,
         interface:&'a mut QuantumChemistryInterface,
     ) -> Simulation<'a> {
+        let config:DynamicConfiguration = system.config.clone();
         let stepsize_au: f64 = config.stepsize * constants::FS_TO_AU;
         let delta_runge_kutta: f64 = stepsize_au / config.n_small_steps as f64;
 
