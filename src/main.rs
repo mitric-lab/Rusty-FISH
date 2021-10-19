@@ -13,7 +13,7 @@ use std::{env, fs};
 use toml;
 
 use crate::defaults::CONFIG_FILE_NAME;
-use crate::initialization::io::{read_file_to_frame, Configuration};
+use crate::initialization::io::{read_file_to_frame, DynamicConfiguration};
 use crate::initialization::Simulation;
 use crate::initialization::SystemData;
 use crate::interface::bagel::*;
@@ -77,7 +77,7 @@ fn main() {
         String::from("")
     };
     // load the configuration
-    let config: Configuration = toml::from_str(&config_string).unwrap();
+    let config: DynamicConfiguration = toml::from_str(&config_string).unwrap();
     // save the configuration file if it does not exist already so that the user can see
     // all the used options
     if config_file_path.exists() == false {
@@ -86,9 +86,9 @@ fn main() {
     }
 
     // Generate system
-    let system: SystemData = SystemData::from((frame, config.clone()));
+    let system: SystemData = SystemData::from((frame, config));
     // Initialize dynamics
     let mut handler:Bagel_Handler = Bagel_Handler::from(&system);
-    let mut dynamic: Simulation = Simulation::new(config, &system,&mut handler);
+    let mut dynamic: Simulation = Simulation::new(&system,&mut handler);
     dynamic.verlet_dynamics();
 }

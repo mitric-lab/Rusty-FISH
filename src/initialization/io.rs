@@ -122,7 +122,7 @@ fn default_pulse_param_5() -> f64 {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct Configuration {
+pub struct DynamicConfiguration {
     #[serde(default = "default_verbose")]
     pub verbose: i8,
     #[serde(default = "default_nstep")]
@@ -181,7 +181,7 @@ pub struct Configuration {
     pub velocity_generation: u8,
 }
 
-impl Configuration {
+impl DynamicConfiguration {
     pub fn new() -> Self {
         // read tincr configuration file, if it does not exist in the directory
         // the program initializes the default settings and writes an configuration file

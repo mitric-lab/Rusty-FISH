@@ -1,19 +1,19 @@
 use crate::constants;
-use crate::initialization::{frame_to_coordinates, Configuration};
+use crate::initialization::{frame_to_coordinates, DynamicConfiguration};
 use chemfiles::Frame;
 use ndarray::prelude::*;
 
 pub struct SystemData {
     // Type that holds all the input settings from the user.
-    pub config: Configuration,
+    pub config: DynamicConfiguration,
     pub n_atoms: usize,
     pub atomic_numbers: Vec<u8>,
     pub coordinates: Array2<f64>,
     pub masses: Array1<f64>,
 }
 
-impl From<(Vec<u8>, Array2<f64>, Configuration)> for SystemData {
-    fn from(molecule: (Vec<u8>, Array2<f64>, Configuration)) -> Self {
+impl From<(Vec<u8>, Array2<f64>, DynamicConfiguration)> for SystemData {
+    fn from(molecule: (Vec<u8>, Array2<f64>, DynamicConfiguration)) -> Self {
         let mut masses: Vec<f64> = Vec::new();
         molecule.0.iter().for_each(|num| {
             masses.push(constants::ATOMIC_MASSES[num]);
@@ -30,10 +30,10 @@ impl From<(Vec<u8>, Array2<f64>, Configuration)> for SystemData {
     }
 }
 
-impl From<(Frame, Configuration)> for SystemData {
+impl From<(Frame, DynamicConfiguration)> for SystemData {
     /// Creates a new [SystemData] from a [Frame](chemfiles::Frame) and
-    /// the global configuration as [Configuration](crate::io::settings::Configuration).
-    fn from(frame: (Frame, Configuration)) -> Self {
+    /// the global configuration as [DynamicConfiguration](crate::io::settings::DynamicConfiguration).
+    fn from(frame: (Frame, DynamicConfiguration)) -> Self {
         let (numbers, coords) = frame_to_coordinates(frame.0);
         Self::from((numbers, coords, frame.1))
     }
