@@ -2,6 +2,5 @@ pub mod initialization;
 pub mod dynamics;
 pub mod interface;
 pub mod output;
-
-use constants;
-use defaults;
+pub mod constants;
+pub mod defaults;
