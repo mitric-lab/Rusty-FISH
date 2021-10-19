@@ -1,5 +1,5 @@
 [package]
-name = "Rusty_FISH"
+name = "rusty-fish"
 version = "0.1.0"
 authors = ["einseler <richard.einsele@gmail.com>"]
 edition = "2018"
