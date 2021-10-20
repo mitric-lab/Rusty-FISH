@@ -470,14 +470,10 @@ impl Simulation<'_> {
             self.interface.compute_data(self.coordinates.view(), self.state);
 
         self.energies = tmp.0;
-        let mut forces:Array1<f64> = tmp.1;
+        let mut forces:Array2<f64> = tmp.1;
         for (idx,mass) in self.masses.iter().enumerate(){
-            for xyz in 0..3{
-                let index:usize = 3*idx+xyz;
-                forces[index] = -1.0 * forces[index]/mass;
-            }
+            self.forces.slice_mut(s![idx,..]).assign(&(-1.0 * &forces.slice(s![idx,..])/mass.to_owned()));
         }
-        self.forces = forces;
 
         // self.forces = tmp.1.mapv(|val| (val * 1.0e9).round() / 1.0e9);
         self.nonadiabatic_arr = tmp.2.clone();
@@ -507,14 +503,10 @@ impl Simulation<'_> {
             self.interface.compute_data(self.coordinates.view(), self.state);
 
         self.energies = tmp.0;
-        let mut forces:Array1<f64> = tmp.1;
+        let mut forces:Array2<f64> = tmp.1;
         for (idx,mass) in self.masses.iter().enumerate(){
-            for xyz in 0..3{
-                let index:usize = 3*idx+xyz;
-                forces[index] = -1.0 * forces[index]/mass;
-            }
+            self.forces.slice_mut(s![idx,..]).assign(&(-1.0 * &forces.slice(s![idx,..])/mass.to_owned()));
         }
-        self.forces = forces;
         // self.forces = tmp.1.mapv(|val| (val * 1.0e9).round() / 1.0e9);
         self.nonadiabatic_arr = tmp.2;
         self.nonadiabatic_arr = align_nonadiabatic_coupling(
