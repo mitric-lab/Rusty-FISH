@@ -174,7 +174,8 @@ impl Bagel_Handler {
             let mut vec: Vec<f64> = Vec::new();
             for item in (0..str.len()) {
                 if str[item].len() > 0 {
-                    vec.push(-str[item].parse::<f64>().unwrap() / self.masses[atom]);
+                    // vec.push(-str[item].parse::<f64>().unwrap() / self.masses[atom]);
+                    vec.push(str[item].parse::<f64>().unwrap());
                 }
             }
             vec.remove(0);
