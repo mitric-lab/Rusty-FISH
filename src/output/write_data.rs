@@ -121,7 +121,7 @@ impl Restart_Output {
     ) -> Restart_Output {
         Restart_Output {
             n_atoms: n_atoms,
-            coordinates: coordinates.to_owned() * constants::BOHR_TO_ANGS,
+            coordinates: coordinates.to_owned(),
             velocities: velocities.to_owned(),
             nonadiabatic_arr:nonadiabatic_arr.to_owned(),
             coefficients:coefficients.to_owned(),
