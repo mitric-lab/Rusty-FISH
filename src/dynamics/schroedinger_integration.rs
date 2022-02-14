@@ -42,9 +42,7 @@ impl Simulation {
                 delta_rk,
                 actual_step,
             );
-            //get_electric_field(self.config.fieldflag, 4 * n_delta, delta_rk, actual_step);
         }
-        // println!("electric field {}",electric_field.slice(s![0..10]));
 
         // Integration
         let t_start: f64 = delta_rk * actual_step;
@@ -398,6 +396,14 @@ fn get_field_coupling(
     let efield_index: usize = n - 1;
 
     if rot_avg {
+        for i in 0..nstates {
+            for j in 0..nstates {
+                let dipole_xyz: ArrayView1<f64> = dipole.slice(s![i, j, ..]);
+                let dipole_dot: f64 = dipole_xyz.dot(&dipole_xyz);
+                coupling[[i, j]] = dipole_dot;
+            }
+        }
+        coupling = coupling * (-1.0 / (3.0_f64.sqrt()));
     } else {
         let evec: Array1<f64> = (-1.0 / 3.0_f64.sqrt()) * Array1::ones(3);
         let evec_normalized = &evec / (evec.dot(&evec)).sqrt();
