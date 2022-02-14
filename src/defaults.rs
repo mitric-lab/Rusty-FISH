@@ -41,6 +41,8 @@ pub const EXTP: bool = false;
 // -1: no coupling, 0: only field coupling
 // 1: only nonadiabatic coupling, 2: both couplings
 pub const COUPLING: i8 = -1;
+
+pub const ROTATIONAL_AVERAGING: bool = true;
 // INTEGRATION OF ELECTRONIC COEFFICIENTS
 // In the presence of an external field (COUPLING = 0 or 2) the electronic Schroedinger
 // equation will be integrated numerically using a 4th order Runge-Kutta scheme.

@@ -42,6 +42,7 @@ impl Simulation {
                 delta_rk,
                 actual_step,
             );
+            //get_electric_field(self.config.fieldflag, 4 * n_delta, delta_rk, actual_step);
         }
         // println!("electric field {}",electric_field.slice(s![0..10]));
 
@@ -69,6 +70,7 @@ impl Simulation {
                 old_nonadiabatic_scalar.view(),
                 nonadibatic_slope.view(),
                 coupling_flag,
+                self.config.pulse_config.rotational_averaging,
                 electric_field.view(),
             );
             old_coefficients = new_coefficients;
@@ -174,6 +176,7 @@ pub fn runge_kutta_integration(
     old_nonadiabatic_scalar: ArrayView2<f64>,
     nonadiabatic_slope: ArrayView2<f64>,
     coupling_flag: i8,
+    rot_avg: bool,
     efield: ArrayView1<f64>,
 ) -> Array1<c64> {
     let n: usize = 4 * iterator - 3;
@@ -189,6 +192,7 @@ pub fn runge_kutta_integration(
         old_nonadiabatic_scalar,
         nonadiabatic_slope,
         coupling_flag,
+        rot_avg,
         efield,
     );
     k_1 = k_1 * delta_rk;
@@ -207,6 +211,7 @@ pub fn runge_kutta_integration(
         old_nonadiabatic_scalar,
         nonadiabatic_slope,
         coupling_flag,
+        rot_avg,
         efield,
     );
     k_2 = k_2 * delta_rk;
@@ -225,6 +230,7 @@ pub fn runge_kutta_integration(
         old_nonadiabatic_scalar,
         nonadiabatic_slope,
         coupling_flag,
+        rot_avg,
         efield,
     );
     k_3 = k_3 * delta_rk;
@@ -243,6 +249,7 @@ pub fn runge_kutta_integration(
         old_nonadiabatic_scalar,
         nonadiabatic_slope,
         coupling_flag,
+        rot_avg,
         efield,
     );
     k_4 = k_4 * delta_rk;
@@ -264,6 +271,7 @@ fn runge_kutta_helper(
     old_nonadiabatic_scalar: ArrayView2<f64>,
     nonadiabatic_slope: ArrayView2<f64>,
     coupling_flag: i8,
+    rot_avg: bool,
     efield: ArrayView1<f64>,
 ) -> Array1<c64> {
     let mut f: Array1<c64> = Array1::zeros(coefficients.raw_dim());
@@ -272,7 +280,7 @@ fn runge_kutta_helper(
 
     // coupling_flag =0: field coupling only; 1: nonadiabatic coupling only; 2: both
     if coupling_flag == 0 || coupling_flag == 2 {
-        field_coupling = get_field_coupling(dipole, n, nstates, efield, n_delta);
+        field_coupling = get_field_coupling(dipole, n, nstates, efield, rot_avg);
     }
 
     if coupling_flag == 1 || coupling_flag == 2 {
@@ -335,28 +343,80 @@ fn get_nonadiabatic_coupling(
     return nonadiabatic;
 }
 
+fn get_complete_field_coupling(
+    dipole: ArrayView3<f64>,
+    nstates: usize,
+    efield: ArrayView1<f64>,
+    rot_avg: bool,
+) -> Array3<f64> {
+    let length = efield.len();
+    let mut efield_coupling: Array3<f64> = Array3::zeros((length, nstates, nstates));
+
+    if rot_avg {
+        let mut coupling: Array2<f64> = Array2::zeros((nstates, nstates));
+        for i in 0..nstates {
+            for j in 0..nstates {
+                let dipole_xyz: ArrayView1<f64> = dipole.slice(s![i, j, ..]);
+                let dipole_dot: f64 = dipole_xyz.dot(&dipole_xyz);
+                coupling[[i, j]] = dipole_dot;
+            }
+        }
+        coupling = coupling * (-1.0 / (3.0_f64.sqrt()));
+        for i in 0..length {
+            efield_coupling
+                .slice_mut(s![i, .., ..])
+                .assign(&(&coupling * efield[i]))
+        }
+    } else {
+        let evec: Array1<f64> = (-1.0 / 3.0_f64.sqrt()) * Array1::ones(3);
+        let evec_normalized = &evec / (evec.dot(&evec)).sqrt();
+
+        let coupling = dipole
+            .into_shape([nstates * nstates, 3])
+            .unwrap()
+            .dot(&evec_normalized)
+            .into_shape([nstates, nstates])
+            .unwrap();
+
+        for i in 0..length {
+            efield_coupling
+                .slice_mut(s![i, .., ..])
+                .assign(&(&coupling * efield[i]))
+        }
+    }
+    return efield_coupling;
+}
+
 fn get_field_coupling(
     dipole: ArrayView3<f64>,
     n: usize,
     nstates: usize,
     efield: ArrayView1<f64>,
-    n_delta: usize,
+    rot_avg: bool,
 ) -> Array2<f64> {
     let mut coupling: Array2<f64> = Array2::zeros((nstates, nstates));
     let efield_index: usize = n - 1;
-    for i in (0..nstates) {
-        for j in (i + 1..nstates) {
-            coupling[[i, j]] = -1.0 / 3.0_f64.sqrt()
-                * (dipole[[i, j, 0]] + dipole[[i, j, 1]] + dipole[[i, j, 2]])
-                * efield[efield_index];
-            coupling[[j, i]] = coupling[[i, j]]
-        }
+
+    if rot_avg {
+    } else {
+        let evec: Array1<f64> = (-1.0 / 3.0_f64.sqrt()) * Array1::ones(3);
+        let evec_normalized = &evec / (evec.dot(&evec)).sqrt();
+
+        coupling = dipole
+            .into_shape([nstates * nstates, 3])
+            .unwrap()
+            .dot(&evec_normalized)
+            .into_shape([nstates, nstates])
+            .unwrap();
+
+        coupling = coupling * efield[efield_index];
     }
     return coupling;
 }
 
 fn get_electric_field(
     config: &PulseConfiguration,
+    field_flag: u8,
     nstep: usize,
     tstep: f64,
     nactstep: f64,

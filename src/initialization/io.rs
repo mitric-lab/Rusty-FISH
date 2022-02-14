@@ -95,7 +95,9 @@ fn default_time_coupling() -> f64 {
 fn default_velocity_generation() -> u8 {
     VELOCITY_GENERATION
 }
-
+fn default_rotational_averaging() -> bool {
+    ROTATIONAL_AVERAGING
+}
 fn default_number_pulses() -> usize {
     1
 }
@@ -204,6 +206,8 @@ pub struct HoppingConfiguration {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PulseConfiguration {
+    #[serde(default = "default_rotational_averaging")]
+    pub rotational_averaging: bool,
     #[serde(default = "default_number_pulses")]
     pub number_pulses: usize,
     #[serde(default = "default_e0")]
