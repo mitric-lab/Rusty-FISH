@@ -290,36 +290,13 @@ fn runge_kutta_helper(
     let mesh_1: ArrayView2<f64> = energy_arr_tmp.broadcast((nstates, nstates)).unwrap();
     let energy_difference: Array2<f64> = &mesh_1.clone() - &mesh_1.t();
 
-    // println!("nonadiabatic {}",non_adiabatic);
-    // println!("coupling {}",field_coupling.t());
-    //
-    // for k in (0..nstates) {
-    //     for l in (0..nstates) {
-    //         let mut incr: c64 = c64::new(0.0, 0.0);
-    //
-    //         if coupling_flag > 0 {
-    //             incr = incr - non_adiabatic[[l, k]];
-    //         }
-    //         println!("incr_0 {}",incr);
-    //         if coupling_flag == 0 || coupling_flag == 2 {
-    //             incr = incr - c64::new(0.0, 1.0) * field_coupling[[l, k]];
-    //         }
-    //         println!("incr_1 {}",incr);
-    //
-    //         f[k] = f[k]
-    //             + incr
-    //                 * coefficients[l]
-    //                 * (c64::new(0.0, 1.0) * (energy[k] - energy[l])* time).exp();
-    //     }
-    // }
-
     // alternative way instead of iteration
-    let dE: Array2<c64> = energy_difference.mapv(|val| (c64::new(0.0, 1.0) * val * time).exp());
+    let de: Array2<c64> = energy_difference.mapv(|val| (c64::new(0.0, 1.0) * val * time).exp());
     let mut incr: Array2<f64> = Array2::zeros((nstates, nstates));
     incr = incr + non_adiabatic;
     let incr_complex = field_coupling.mapv(|val| c64::new(0.0, -1.0) * val) + incr;
     // let h:Array2<c64> = dE * non_adiabatic;
-    let h: Array2<c64> = dE * incr_complex;
+    let h: Array2<c64> = de * incr_complex;
     let f_new: Array1<c64> = h.dot(&coefficients); //.mapv(|val| val *c64::new(0.0,-1.0));
 
     return f_new;
@@ -403,7 +380,7 @@ fn get_field_coupling(
                 coupling[[i, j]] = dipole_dot;
             }
         }
-        coupling = coupling * (-1.0 / (3.0_f64.sqrt()));
+        coupling = coupling * (-1.0 / (3.0_f64.sqrt())) * efield[efield_index];
     } else {
         let evec: Array1<f64> = (-1.0 / 3.0_f64.sqrt()) * Array1::ones(3);
         let evec_normalized = &evec / (evec.dot(&evec)).sqrt();

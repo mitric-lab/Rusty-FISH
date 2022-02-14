@@ -9,8 +9,6 @@ nuclear_propagation = "v"
 charge = 0
 initial_state = 0
 nstates = 1
-states_reduced = false
-fieldflag = 1
 extrapolate_forces = false
 gs_dynamic = true
 time_coupling = 0.0
@@ -28,6 +26,7 @@ decoherence_correction = false
 start_econst = 0.0
 
 [pulse_config]
+rotational_averaging = true
 number_pulses = 1
 e0 = 0.1
 omega = 0.1
