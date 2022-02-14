@@ -22,7 +22,7 @@ pub const TEMPERATURE: f64 = 300.0;
 // friction coefficient for ethylene glycol (in a.u.^-1)
 pub const FRICTION: f64 = 0.015585;
 // new trajectory: "new"  or restart dynamics: "restart"
-pub const INPUTFLAG: &'static str = "new";
+pub const INPUTFLAG: &str = "new";
 // write nonadiabatic couplings and transition dipole moments if available
 pub const PRINT_COUPLING: bool = false;
 // write information on coefficients and hopping: 0:
@@ -50,9 +50,9 @@ pub const ROTATIONAL_AVERAGING: bool = true;
 // the local diabatic basis provided the electronic structure method can compute
 // the overlap matrix between electronic wavefunctions at subsequent time steps.
 // "RK" and "LD" force the use of Runge-Kutta or local diabatic integration.
-pub const INTEGRATION_TYPE: &'static str = "auto";
+pub const INTEGRATION_TYPE: &str = "auto";
 // type of velocity rescaling for surface hopping: "uniform" or "vector"
-pub const RESCALE_TYPE: &'static str = "uniform";
+pub const RESCALE_TYPE: &str = "uniform";
 // Excitation coefficients that are smaller than this threshold are neglected when calculating
 // scalar couplings. For large molecules this value should be reduced to 0.01.
 pub const SCALAR_COUPLING_TRESHOLD: f64 = 0.01;

@@ -1,16 +1,9 @@
-use crate::constants;
 use crate::initialization::PulseConfiguration;
 use crate::initialization::Simulation;
 use ndarray::prelude::*;
 use ndarray::{array, Array, Array1, Array2, ArrayView1, ArrayView2, Axis};
-use ndarray_linalg::Lapack;
-use ndarray_linalg::Scalar;
-use ndarray_linalg::{c64, eigh, into_col, into_row, solve, Eig, Eigh, Inverse, Solve, UPLO};
-use rand::Rng;
-use rand_distr::{Distribution, Normal};
-use std::fs;
-use std::path::Path;
-use toml;
+
+use ndarray_linalg::{c64, Eig, Eigh, Inverse, UPLO};
 
 impl Simulation {
     pub fn get_hopping_fortran(&self, actual_step: f64) -> Array1<c64> {
@@ -24,8 +17,8 @@ impl Simulation {
 
         let mut nonadibatic_slope: Array2<f64> = Array2::zeros(nonadiabatic_scalar.raw_dim());
         if coupling_flag == 1 || coupling_flag == 2 {
-            for i in (0..self.config.nstates) {
-                for j in (0..self.config.nstates) {
+            for i in 0..self.config.nstates {
+                for j in 0..self.config.nstates {
                     nonadibatic_slope[[i, j]] = (nonadiabatic_scalar[[i, j]]
                         - old_nonadiabatic_scalar[[i, j]])
                         / (n_delta as f64 * delta_rk);
@@ -46,12 +39,11 @@ impl Simulation {
 
         // Integration
         let t_start: f64 = delta_rk * actual_step;
-        let mut t_i: f64 = 0.0;
         let mut old_coefficients: Array1<c64> = self.coefficients.clone();
 
-        for i in (0..n_delta) {
-            t_i = i as f64 * delta_rk;
-            let t_abs: f64 = t_start + t_i;
+        for i in 0..n_delta {
+            let t_i: f64 = i as f64 * delta_rk;
+            let _t_abs: f64 = t_start + t_i;
 
             // do runge kutta
             let new_coefficients: Array1<c64> = runge_kutta_integration(
@@ -79,7 +71,7 @@ impl Simulation {
             .mapv(|val| (-c64::new(0.0, 1.0) * val * time).exp());
         let c_new: Array1<c64> = old_coefficients * energy_compl;
 
-        return c_new;
+        c_new
     }
 
     // The coefficients of the electronic wavefunction are propagated
@@ -115,7 +107,7 @@ impl Simulation {
 
         // subtract lowest energy from diagonal
         let h_00_val: f64 = h_interp[[0, 0]];
-        for ii in (0..h_interp.dim().0) {
+        for ii in 0..h_interp.dim().0 {
             h_interp[[ii, ii]] -= h_00_val;
         }
 
@@ -156,7 +148,7 @@ impl Simulation {
         let h_diab: Array2<f64> = t_tot.dot(&Array::from_diag(&e_1).dot(&t_tot_inv));
         ttot_last = t_tot;
 
-        return (c_1, h_diab, ttot_last);
+        (c_1, h_diab, ttot_last)
     }
 }
 
@@ -165,7 +157,7 @@ pub fn runge_kutta_integration(
     time: f64,
     coefficients: ArrayView1<c64>,
     energy: ArrayView1<f64>,
-    actual_step: f64,
+    _actual_step: f64,
     nstates: usize,
     actual_state: usize,
     n_delta: usize,
@@ -254,7 +246,7 @@ pub fn runge_kutta_integration(
 
     let new_coefficients: Array1<c64> =
         &coefficients + &((k_1 + k_2 * 2.0 + k_3 * 2.0 + k_4) * 1.0 / 6.0);
-    return new_coefficients;
+    new_coefficients
 }
 
 fn runge_kutta_helper(
@@ -262,8 +254,8 @@ fn runge_kutta_helper(
     coefficients: ArrayView1<c64>,
     energy: ArrayView1<f64>,
     nstates: usize,
-    actual_state: usize,
-    n_delta: usize,
+    _actual_state: usize,
+    _n_delta: usize,
     n: usize,
     dipole: ArrayView3<f64>,
     old_nonadiabatic_scalar: ArrayView2<f64>,
@@ -272,7 +264,7 @@ fn runge_kutta_helper(
     rot_avg: bool,
     efield: ArrayView1<f64>,
 ) -> Array1<c64> {
-    let mut f: Array1<c64> = Array1::zeros(coefficients.raw_dim());
+    let _f: Array1<c64> = Array1::zeros(coefficients.raw_dim());
     let mut non_adiabatic: Array2<f64> = Array2::zeros(nonadiabatic_slope.raw_dim());
     let mut field_coupling: Array2<f64> = Array2::zeros(nonadiabatic_slope.raw_dim());
 
@@ -286,7 +278,7 @@ fn runge_kutta_helper(
             get_nonadiabatic_coupling(time, nonadiabatic_slope, old_nonadiabatic_scalar, nstates);
     }
     // create energy difference array
-    let mut energy_arr_tmp: Array2<f64> = energy.to_owned().insert_axis(Axis(1));
+    let energy_arr_tmp: Array2<f64> = energy.to_owned().insert_axis(Axis(1));
     let mesh_1: ArrayView2<f64> = energy_arr_tmp.broadcast((nstates, nstates)).unwrap();
     let energy_difference: Array2<f64> = &mesh_1.clone() - &mesh_1.t();
 
@@ -299,7 +291,7 @@ fn runge_kutta_helper(
     let h: Array2<c64> = de * incr_complex;
     let f_new: Array1<c64> = h.dot(&coefficients); //.mapv(|val| val *c64::new(0.0,-1.0));
 
-    return f_new;
+    f_new
 }
 
 fn get_nonadiabatic_coupling(
@@ -309,13 +301,13 @@ fn get_nonadiabatic_coupling(
     nstates: usize,
 ) -> Array2<f64> {
     let mut nonadiabatic: Array2<f64> = Array::zeros(old_nonadiabatic_scalar.raw_dim());
-    for i in (0..nstates) {
-        for j in (0..nstates) {
+    for i in 0..nstates {
+        for j in 0..nstates {
             nonadiabatic[[i, j]] =
                 old_nonadiabatic_scalar[[i, j]] + nonadiabatic_slope[[i, j]] * time;
         }
     }
-    return nonadiabatic;
+    nonadiabatic
 }
 
 fn get_complete_field_coupling(
@@ -336,7 +328,7 @@ fn get_complete_field_coupling(
                 coupling[[i, j]] = dipole_dot;
             }
         }
-        coupling = coupling * (-1.0 / (3.0_f64.sqrt()));
+        coupling *= -1.0 / (3.0_f64.sqrt());
         for i in 0..length {
             efield_coupling
                 .slice_mut(s![i, .., ..])
@@ -359,7 +351,7 @@ fn get_complete_field_coupling(
                 .assign(&(&coupling * efield[i]))
         }
     }
-    return efield_coupling;
+    efield_coupling
 }
 
 fn get_field_coupling(
@@ -392,20 +384,9 @@ fn get_field_coupling(
             .into_shape([nstates, nstates])
             .unwrap();
 
-        coupling = coupling * efield[efield_index];
+        coupling *= efield[efield_index];
     }
-    return coupling;
-}
-
-fn get_electric_field(
-    config: &PulseConfiguration,
-    field_flag: u8,
-    nstep: usize,
-    tstep: f64,
-    nactstep: f64,
-) -> Array1<f64> {
-    let electric_field: Array1<f64> = get_analytic_field(config, nstep, tstep, nactstep);
-    return electric_field;
+    coupling
 }
 
 fn get_analytic_field(
@@ -421,12 +402,12 @@ fn get_analytic_field(
     let alpha: f64 = config.gaussian_factor;
     let t0: f64 = config.time_delay;
 
-    for step in (0..nstep) {
+    for step in 0..nstep {
         let time: f64 = tstep * (nactstep + 0.25 * step as f64);
         electric_field[step] +=
             e0 * (omega * (time - t0)).cos() * (-alpha * (time - t0).powi(2)).exp();
     }
-    return electric_field;
+    electric_field
 }
 
 // The coefficients of the electronic wavefunction are propagated
@@ -472,7 +453,7 @@ pub fn get_local_diabatization(
 
     // subtract lowest energy from diagonal
     let h_00_val: f64 = h_interp[[0, 0]];
-    for ii in (0..h_interp.dim().0) {
+    for ii in 0..h_interp.dim().0 {
         h_interp[[ii, ii]] -= h_00_val;
     }
     println!("Hinterp v2 {}", h_interp);
@@ -515,5 +496,5 @@ pub fn get_local_diabatization(
     let h_diab: Array2<f64> = t_tot.dot(&Array::from_diag(&e_1).dot(&t_tot_inv));
     ttot_last = t_tot;
 
-    return (c_1, h_diab, ttot_last);
+    (c_1, h_diab, ttot_last)
 }

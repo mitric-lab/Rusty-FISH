@@ -2,7 +2,7 @@ use crate::constants;
 use crate::initialization::system::SystemData;
 use crate::initialization::velocities::*;
 use crate::initialization::DynamicConfiguration;
-use crate::interface::QuantumChemistryInterface;
+
 use ndarray::prelude::*;
 use ndarray_linalg::c64;
 
@@ -61,7 +61,7 @@ impl Simulation {
 
         // set friction
         let mut friction: Array1<f64> = Array1::ones(system.n_atoms);
-        friction = friction * config.friction;
+        friction *= config.friction;
 
         let mut velocities: Array2<f64> = Array2::zeros(system.coordinates.raw_dim());
         if config.velocity_generation == 0 {
@@ -78,29 +78,29 @@ impl Simulation {
             actual_step: 0.0,
             actual_time: 0.0,
             stepsize: stepsize_au,
-            total_mass: total_mass,
+            total_mass,
             time_coupling: config.time_coupling * constants::FS_TO_AU,
-            config: config,
-            coefficients: coefficients,
+            config,
+            coefficients,
             coordinates: system.coordinates.clone(),
             masses: system.masses.clone(),
-            velocities: velocities,
+            velocities,
             kinetic_energy: 0.0,
             n_atoms: system.n_atoms,
             atomic_numbers: system.atomic_numbers.clone(),
-            last_forces: last_forces,
-            friction: friction,
-            forces: forces,
-            energies: energies,
+            last_forces,
+            friction,
+            forces,
+            energies,
             nonadiabatic_arr: nonad_arr.clone(),
             nonadiabatic_arr_old: nonad_arr,
             nonadiabatic_scalar: nonad_scalar.clone(),
             nonadiabatic_scalar_old: nonad_scalar,
-            s_mat: s_mat,
+            s_mat,
             dipole: dipole.clone(),
             dipole_old: dipole,
             saved_efactor: efactor,
-            saved_p_rand: saved_p_rand,
+            saved_p_rand,
             t_tot_last: None,
         }
     }

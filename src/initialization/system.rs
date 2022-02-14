@@ -25,7 +25,7 @@ impl From<(Vec<u8>, Array2<f64>, DynamicConfiguration)> for SystemData {
             n_atoms: molecule.0.len(),
             atomic_numbers: molecule.0,
             coordinates: molecule.1,
-            masses: masses,
+            masses,
         }
     }
 }

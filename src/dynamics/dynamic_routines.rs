@@ -2,8 +2,7 @@ use crate::constants;
 use crate::initialization::Simulation;
 use ndarray::prelude::*;
 use ndarray::{array, Array, Array1, Array2, ArrayView1, ArrayView2, Axis};
-use ndarray_linalg::{into_col, into_row, solve, Inverse};
-use rand::Rng;
+use ndarray_linalg::{into_col, into_row, Inverse};
 use rand_distr::{Distribution, Normal};
 
 impl Simulation {
@@ -11,16 +10,16 @@ impl Simulation {
         let n_at: usize = self.masses.len();
         let gdt: Array1<f64> = self.stepsize * &self.friction;
         let egdt: Array1<f64> = gdt.mapv(|val| (-1.0 * val).exp());
-        let pterm: Array1<f64> = 2.0 * gdt.clone() - 3.0 + (4.0 - egdt.clone()) * &egdt;
+        let pterm: Array1<f64> = 2.0 * gdt - 3.0 + (4.0 - egdt.clone()) * &egdt;
         let vterm: Array1<f64> = 1.0 - egdt.mapv(|val| val.powi(2));
 
-        let ktm: Array1<f64> = constants::K_BOLTZMANN * &self.config.temperature / &self.masses;
+        let ktm: Array1<f64> = constants::K_BOLTZMANN * self.config.temperature / &self.masses;
 
         let mut rho: Array1<f64> = Array1::zeros(n_at);
         let mut psig: Array1<f64> = Array1::zeros(n_at);
         let mut rhoc: Array1<f64> = Array1::zeros(n_at);
 
-        for index in (0..n_at) {
+        for index in 0..n_at {
             if self.friction[index] != 0.0 {
                 rho[index] = (1.0 - egdt[index]).powi(2) / (pterm[index] * vterm[index]).sqrt();
                 psig[index] = (ktm[index] * pterm[index]).sqrt() / self.friction[index];
@@ -33,43 +32,41 @@ impl Simulation {
         let mut vrand: Array2<f64> = Array2::zeros((n_at, 3));
 
         let normal = Normal::new(0.0, 1.0).unwrap();
-        let mut iter: usize = 0;
-        for i in (0..n_at) {
-            for j in (0..3) {
+        for i in 0..n_at {
+            for j in 0..3 {
                 let pnorm: f64 = normal.sample(&mut rand::thread_rng());
                 let vnorm: f64 = normal.sample(&mut rand::thread_rng());
-                iter += 1;
                 prand[[i, j]] = psig[i] * pnorm;
                 vrand[[i, j]] = vsig[i] * (rho[i] * pnorm + rhoc[i] * vnorm);
             }
         }
-        return (vrand, prand);
+        (vrand, prand)
     }
 
     pub fn get_e_factor_langevin(&self) -> Array1<f64> {
         let efactor: Array1<f64> = 1.0 - (self.stepsize * -&self.friction).mapv(|val| val.exp());
-        return efactor;
+        efactor
     }
 
     // Velocity Verlet routines
     pub fn get_coord_verlet(&self) -> Array2<f64> {
         let new_coords: Array2<f64> = &self.coordinates
             + &(self.stepsize * &self.velocities + 0.5 * self.stepsize.powi(2) * &self.forces);
-        return new_coords;
+        new_coords
     }
 
     pub fn get_velocities_verlet(&self, old_forces: ArrayView2<f64>) -> Array2<f64> {
         let new_velocities: Array2<f64> =
             &self.velocities + &(self.stepsize * 0.5 * &(&old_forces + &self.forces));
-        return new_velocities;
+        new_velocities
     }
 
     pub fn get_coordinates_langevin(&self) -> Array2<f64> {
         let n_at: usize = self.friction.len();
         let mut new_coords: Array2<f64> = Array2::zeros(self.coordinates.raw_dim());
-        for ind in (0..n_at) {
+        for ind in 0..n_at {
             if self.friction[ind] != 0.0 {
-                for j in (0..3) {
+                for j in 0..3 {
                     new_coords[[ind, j]] = self.coordinates[[ind, j]]
                         + self.saved_efactor[ind] * self.velocities[[ind, j]] / self.friction[ind]
                         + (self.friction[ind] * self.stepsize - self.saved_efactor[ind])
@@ -78,14 +75,14 @@ impl Simulation {
                         + self.saved_p_rand[[ind, j]];
                 }
             } else {
-                for j in (0..3) {
+                for j in 0..3 {
                     new_coords[[ind, j]] = self.coordinates[[ind, j]]
                         + self.stepsize * self.velocities[[ind, j]]
                         + 0.5 * self.stepsize.powi(2) * self.forces[[ind, j]];
                 }
             }
         }
-        return new_coords;
+        new_coords
     }
 
     pub fn get_velocities_langevin(
@@ -95,9 +92,9 @@ impl Simulation {
     ) -> Array2<f64> {
         let n_at: usize = self.friction.len();
         let mut new_velocities: Array2<f64> = Array2::zeros(self.velocities.raw_dim());
-        for ind in (0..n_at) {
+        for ind in 0..n_at {
             if self.friction[ind] != 0.0 {
-                for j in (0..3) {
+                for j in 0..3 {
                     new_velocities[[ind, j]] = self.velocities[[ind, j]]
                         * (-self.friction[ind] * self.stepsize).exp()
                         + 0.5
@@ -107,20 +104,20 @@ impl Simulation {
                         + vrand[[ind, j]];
                 }
             } else {
-                for j in (0..3) {
+                for j in 0..3 {
                     new_velocities[[ind, j]] = self.velocities[[ind, j]]
                         + self.stepsize * 0.5 * (old_forces[[ind, j]] + self.forces[[ind, j]]);
                 }
             }
         }
-        return new_velocities;
+        new_velocities
     }
 
     pub fn shift_to_center_of_mass(&self) -> Array2<f64> {
         let vec: Array1<f64> =
             get_center_of_mass(self.coordinates.view(), self.masses.view(), self.total_mass);
         let diff: Array2<f64> = &self.coordinates - &vec;
-        return diff;
+        diff
     }
 
     pub fn eliminate_translation_rotation_from_velocity(&self) -> Array2<f64> {
@@ -147,12 +144,12 @@ impl Simulation {
             angular_velocities.view(),
         );
 
-        return new_velocities;
+        new_velocities
     }
 
     pub fn get_kinetic_energy(&self) -> f64 {
         let mut kinetic: f64 = 0.0;
-        for index in (0..self.masses.len()).into_iter() {
+        for index in 0..self.masses.len() {
             kinetic += self.masses[index]
                 * 0.5
                 * self
@@ -161,7 +158,7 @@ impl Simulation {
                     .mapv(|val| val.powi(2))
                     .sum();
         }
-        return kinetic;
+        kinetic
     }
 }
 
@@ -174,7 +171,7 @@ pub fn get_center_of_mass(
     let mut y: f64 = 0.0;
     let mut z: f64 = 0.0;
 
-    for index in (0..masses.len()).into_iter() {
+    for index in 0..masses.len() {
         x += masses[index] * coordinates[[index, 0]] / total_mass;
         y += masses[index] * coordinates[[index, 1]] / total_mass;
         z += masses[index] * coordinates[[index, 2]] / total_mass;
@@ -185,7 +182,7 @@ pub fn get_center_of_mass(
 pub fn get_momentum(masses: ArrayView1<f64>, velocities: ArrayView2<f64>) -> Array1<f64> {
     let p: Array2<f64> = &velocities.t() * &masses;
     let arr: Array1<f64> = p.sum_axis(Axis(1));
-    return arr;
+    arr
 }
 
 pub fn eliminate_translation_rotation_from_velocity(
@@ -213,7 +210,7 @@ pub fn eliminate_translation_rotation_from_velocity(
         angular_velocities.view(),
     );
 
-    return new_velocities;
+    new_velocities
 }
 
 pub fn eliminate_translation(
@@ -222,7 +219,7 @@ pub fn eliminate_translation(
     total_mass: f64,
 ) -> Array2<f64> {
     let diff: Array2<f64> = &velocities - &(&momentum / total_mass);
-    return diff;
+    diff
 }
 
 pub fn my_cross_product(a: ArrayView1<f64>, b: ArrayView1<f64>) -> Array1<f64> {
@@ -231,7 +228,7 @@ pub fn my_cross_product(a: ArrayView1<f64>, b: ArrayView1<f64>) -> Array1<f64> {
         a[2] * b[0] - a[0] * b[2],
         a[0] * b[1] - a[1] * b[0]
     ];
-    return arr;
+    arr
 }
 
 pub fn get_angular_momentum(
@@ -240,7 +237,7 @@ pub fn get_angular_momentum(
     velocities: ArrayView2<f64>,
 ) -> Array1<f64> {
     let mut angular: Array1<f64> = Array1::zeros(3);
-    for index in (0..masses.len()).into_iter() {
+    for index in 0..masses.len() {
         angular = angular
             + masses[index]
                 * my_cross_product(
@@ -248,13 +245,13 @@ pub fn get_angular_momentum(
                     velocities.slice(s![index, ..]),
                 );
     }
-    return angular;
+    angular
 }
 
 pub fn get_moment_of_inertia(coordinates: ArrayView2<f64>, masses: ArrayView1<f64>) -> Array2<f64> {
     let mut i_mat: Array2<f64> = Array2::zeros((3, 3));
     let e_mat: Array2<f64> = Array::eye(3);
-    for index in (0..masses.len()).into_iter() {
+    for index in 0..masses.len() {
         let outer: Array2<f64> = into_col(coordinates.slice(s![index, ..]))
             .dot(&into_row(coordinates.slice(s![index, ..])));
         i_mat = i_mat
@@ -265,7 +262,7 @@ pub fn get_moment_of_inertia(coordinates: ArrayView2<f64>, masses: ArrayView1<f6
                     * e_mat.clone()
                     - outer);
     }
-    return i_mat;
+    i_mat
 }
 
 pub fn get_angular_velocity(
@@ -273,7 +270,7 @@ pub fn get_angular_velocity(
     inertia: ArrayView2<f64>,
 ) -> Array1<f64> {
     let mat: Array1<f64> = inertia.inv().unwrap().dot(&angular_momentum);
-    return mat;
+    mat
 }
 
 pub fn eliminate_rotation(
@@ -282,60 +279,11 @@ pub fn eliminate_rotation(
     omega: ArrayView1<f64>,
 ) -> Array2<f64> {
     let mut new_velocities: Array2<f64> = velocities.to_owned();
-    for index in (0..coordinates.dim().0) {
+    for index in 0..coordinates.dim().0 {
         new_velocities.slice_mut(s![index, ..]).assign(
             &(&velocities.slice(s![index, ..])
                 - &my_cross_product(omega, coordinates.slice(s![index, ..]))),
         );
     }
-    return new_velocities;
-}
-
-pub fn extrapolate_forces(
-    last_forces: ArrayView3<f64>,
-    index: usize,
-    forces: ArrayView2<f64>,
-) -> Array2<f64> {
-    let n_atoms: usize = forces.dim().0;
-    let index_1: usize = (index - 2).rem_euclid(3);
-    let index_2: usize = (index - 1).rem_euclid(3);
-
-    let f_0: ArrayView2<f64> = last_forces.slice(s![index_1, .., ..]);
-    let f_1: ArrayView2<f64> = last_forces.slice(s![index_2, .., ..]);
-    let f_2: ArrayView2<f64> = last_forces.slice(s![index, .., ..]);
-    let extp_force: Array2<f64> = &f_0 - &(3.0 * &f_1 + 3.0 * &f_2);
-
-    let fex: Array1<f64> = extp_force.clone().into_shape(3 * n_atoms).unwrap();
-    let fo: ArrayView1<f64> = forces.into_shape(3 * n_atoms).unwrap();
-    let fexnorm: f64 = fex.dot(&fex).sqrt();
-    let fonorm: f64 = fo.dot(&fo).sqrt();
-
-    let mut factnorm: f64 = fonorm;
-    let mut new_forces: Array2<f64> = forces.to_owned();
-    if fexnorm / fonorm < 0.9 {
-        new_forces = extp_force;
-        factnorm = fexnorm;
-    }
-    return (new_forces);
-}
-
-#[test]
-fn test_random_seeding() {
-    use rand::rngs::StdRng;
-    use rand::{Rng, SeedableRng};
-    use rand_distr::{Distribution, Normal};
-
-    let mut r = StdRng::seed_from_u64(222); // <- Here we set the seed
-    let normal = Normal::new(0.0, 1.0).unwrap(); //<- I needed Normal Standard distribution
-
-    let v1 = normal.sample(&mut r); // <- Here we use the generator
-    let v2 = normal.sample(&mut r);
-    let n1: u8 = r.gen(); // <- Here we use the generator as uniform distribution
-    let n2: u16 = r.gen();
-    println!("Normal Sample1: {}", v1);
-    println!("Normal Sample2: {}", v2);
-    println!("Random u8: {}", n1);
-    println!("Random u16: {}", n2);
-
-    assert!(1 == 2);
+    new_velocities
 }

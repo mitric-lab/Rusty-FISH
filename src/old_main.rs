@@ -1,24 +1,21 @@
-#![allow(dead_code)]
-#![allow(warnings)]
-
 use clap::{App, Arg};
 use env_logger::Builder;
-use log::info;
+
 use log::LevelFilter;
 use std::io::Write;
 use std::path::Path;
-use std::process;
-use std::time::{Duration, Instant};
+
+
 use std::{env, fs};
-use toml;
+
 
 use crate::defaults::CONFIG_FILE_NAME;
 use crate::initialization::io::{read_file_to_frame, DynamicConfiguration};
-use crate::initialization::Simulation;
+
 use crate::initialization::SystemData;
-use crate::interface::QuantumChemistryInterface;
+
 use chemfiles::Frame;
-use ndarray::Array2;
+
 
 mod constants;
 mod defaults;
@@ -74,11 +71,11 @@ fn main() {
     let config: DynamicConfiguration = toml::from_str(&config_string).unwrap();
     // save the configuration file if it does not exist already so that the user can see
     // all the used options
-    if config_file_path.exists() == false {
+    if !config_file_path.exists() {
         config_string = toml::to_string(&config).unwrap();
         fs::write(config_file_path, config_string).expect("Unable to write config file");
     }
 
     // Generate system
-    let system: SystemData = SystemData::from((frame, config));
+    let _system: SystemData = SystemData::from((frame, config));
 }

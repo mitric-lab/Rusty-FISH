@@ -1,8 +1,8 @@
 use crate::constants;
 use crate::dynamics::{
-    align_nonadiabatic_coupling, extrapolate_forces, get_nonadiabatic_scalar_coupling,
+    align_nonadiabatic_coupling, get_nonadiabatic_scalar_coupling,
 };
-use crate::initialization::restart;
+
 use crate::initialization::restart::read_restart_parameters;
 use crate::initialization::Simulation;
 use crate::interface::QuantumChemistryInterface;
@@ -11,7 +11,7 @@ use ndarray::prelude::*;
 use ndarray_linalg::c64;
 
 impl Simulation {
-    pub fn initialize_verlet(&mut self, interface: &mut QuantumChemistryInterface) {
+    pub fn initialize_verlet(&mut self, interface: &mut dyn QuantumChemistryInterface) {
         if self.config.inputflag == "new" {
             self.initiate_trajectory(interface);
         } else if self.config.inputflag == "restart" {
@@ -19,7 +19,7 @@ impl Simulation {
         } else {
             panic!("The inputflag must be either 'new' or 'restart'");
         }
-        let restart: Restart_Output = Restart_Output::new(
+        let restart: RestartOutput = RestartOutput::new(
             self.n_atoms,
             self.coordinates.view(),
             self.velocities.view(),
@@ -28,7 +28,7 @@ impl Simulation {
         );
         write_restart(&restart);
 
-        let xyz_output: XYZ_Output = XYZ_Output::new(
+        let xyz_output: XyzOutput = XyzOutput::new(
             self.n_atoms,
             self.coordinates.view(),
             self.atomic_numbers.clone(),
@@ -37,7 +37,7 @@ impl Simulation {
 
         let total_energy: f64 = self.kinetic_energy + self.energies[self.state];
         let energy_diff: f64 = total_energy;
-        let full: Standard_Output = Standard_Output::new(
+        let full: StandardOutput = StandardOutput::new(
             0.0,
             self.coordinates.view(),
             self.velocities.view(),
@@ -57,7 +57,7 @@ impl Simulation {
         self.coordinates = self.shift_to_center_of_mass();
     }
 
-    pub fn verlet_step(&mut self, interface: &mut QuantumChemistryInterface) {
+    pub fn verlet_step(&mut self, interface: &mut dyn QuantumChemistryInterface) {
         let old_forces: Array2<f64> = self.forces.clone();
         let old_energy: f64 = self.energies[self.state] + self.kinetic_energy;
         let old_kinetic: f64 = self.kinetic_energy;
@@ -71,7 +71,7 @@ impl Simulation {
         self.get_quantum_chem_data(interface);
 
         if self.config.hopping_config.coupling_flag > -1 {
-            if self.config.gs_dynamic == true {
+            if self.config.gs_dynamic {
                 // skip hopping procedure if the ground state is forced
             } else {
                 let old_coeff: Array1<c64> = self.coefficients.clone();
@@ -104,7 +104,7 @@ impl Simulation {
                 self.get_new_state(old_coeff.view());
 
                 if self.actual_time > econst
-                    && self.config.hopping_config.decoherence_correction == true
+                    && self.config.hopping_config.decoherence_correction
                 {
                     // The decoherence correction should be turned on only
                     // if energy conservation is turned on, too.
@@ -141,12 +141,12 @@ impl Simulation {
         if self.config.dyn_mode == 'T' {
             self.velocities = self.scale_velocities_temperature();
         }
-        if self.config.dyn_mode == 'E' && self.config.artificial_energy_conservation == true {
+        if self.config.dyn_mode == 'E' && self.config.artificial_energy_conservation {
             self.velocities =
                 self.scale_velocities_const_energy(old_state, old_kinetic, old_potential_energy);
         }
         // Write Output in each step
-        let restart: Restart_Output = Restart_Output::new(
+        let restart: RestartOutput = RestartOutput::new(
             self.n_atoms,
             self.coordinates.view(),
             self.velocities.view(),
@@ -154,9 +154,8 @@ impl Simulation {
             self.coefficients.view(),
         );
         write_restart(&restart);
-        // write_restart_custom(&restart);
 
-        let xyz_output: XYZ_Output = XYZ_Output::new(
+        let xyz_output: XyzOutput = XyzOutput::new(
             self.n_atoms,
             self.coordinates.view(),
             self.atomic_numbers.clone(),
@@ -166,7 +165,7 @@ impl Simulation {
         let total_energy: f64 = self.kinetic_energy + self.energies[self.state];
         let energy_diff: f64 = total_energy - old_energy;
 
-        let full: Standard_Output = Standard_Output::new(
+        let full: StandardOutput = StandardOutput::new(
             self.actual_time,
             self.coordinates.view(),
             self.velocities.view(),
@@ -182,7 +181,7 @@ impl Simulation {
         write_state(self.state);
 
         if self.config.hopping_config.coupling_flag > -1 {
-            let hopping_out: hopping_output = hopping_output::new(
+            let hopping_out: HoppingOutput = HoppingOutput::new(
                 self.actual_time,
                 self.coefficients.view(),
                 self.nonadiabatic_scalar.view(),
@@ -201,7 +200,7 @@ impl Simulation {
         self.actual_time += self.stepsize;
     }
 
-    pub fn initialize_langevin(&mut self, interface: &mut QuantumChemistryInterface) {
+    pub fn initialize_langevin(&mut self, interface: &mut dyn QuantumChemistryInterface) {
         if self.config.inputflag == "new" {
             self.initiate_trajectory(interface);
         } else if self.config.inputflag == "restart" {
@@ -211,7 +210,7 @@ impl Simulation {
         }
 
         // Write initial output
-        let restart: Restart_Output = Restart_Output::new(
+        let restart: RestartOutput = RestartOutput::new(
             self.n_atoms,
             self.coordinates.view(),
             self.velocities.view(),
@@ -221,7 +220,7 @@ impl Simulation {
         write_restart(&restart);
         // write_restart_custom(&restart);
 
-        let xyz_output: XYZ_Output = XYZ_Output::new(
+        let xyz_output: XyzOutput = XyzOutput::new(
             self.n_atoms,
             self.coordinates.view(),
             self.atomic_numbers.clone(),
@@ -230,7 +229,7 @@ impl Simulation {
 
         let total_energy: f64 = self.kinetic_energy + self.energies[self.state];
         let energy_diff: f64 = total_energy;
-        let full: Standard_Output = Standard_Output::new(
+        let full: StandardOutput = StandardOutput::new(
             0.0,
             self.coordinates.view(),
             self.velocities.view(),
@@ -246,7 +245,7 @@ impl Simulation {
         write_energies(self.energies.view());
 
         // Langevin routine
-        let (vrand, prand): (Array2<f64>, Array2<f64>) = self.get_random_terms();
+        let (_vrand, prand): (Array2<f64>, Array2<f64>) = self.get_random_terms();
         self.saved_p_rand = prand;
         let efactor = self.get_e_factor_langevin();
         self.saved_efactor = efactor;
@@ -257,7 +256,7 @@ impl Simulation {
         self.coordinates = self.shift_to_center_of_mass();
     }
 
-    pub fn langevin_step(&mut self, interface: &mut QuantumChemistryInterface) {
+    pub fn langevin_step(&mut self, interface: &mut dyn QuantumChemistryInterface) {
         let econst: f64 = self.config.hopping_config.start_econst * constants::FS_TO_AU;
         let old_forces: Array2<f64> = self.forces.clone();
         let old_energy: f64 = self.energies[self.state] + self.kinetic_energy;
@@ -269,7 +268,7 @@ impl Simulation {
         self.get_quantum_chem_data(interface);
 
         if self.config.hopping_config.coupling_flag > -1 {
-            if self.config.gs_dynamic == true {
+            if self.config.gs_dynamic {
                 // skip hopping procedure if the ground state is forced
             } else {
                 let old_coeff: Array1<c64> = self.coefficients.clone();
@@ -302,7 +301,7 @@ impl Simulation {
                 self.get_new_state(old_coeff.view());
 
                 if self.actual_time > econst
-                    && self.config.hopping_config.decoherence_correction == true
+                    && self.config.hopping_config.decoherence_correction
                 {
                     // The decoherence correction should be turned on only
                     // if energy conservation is turned on, too.
@@ -339,7 +338,7 @@ impl Simulation {
         self.kinetic_energy = self.get_kinetic_energy();
 
         // Write Output in each step
-        let restart: Restart_Output = Restart_Output::new(
+        let restart: RestartOutput = RestartOutput::new(
             self.n_atoms,
             self.coordinates.view(),
             self.velocities.view(),
@@ -349,7 +348,7 @@ impl Simulation {
         write_restart(&restart);
         // write_restart_custom(&restart);
 
-        let xyz_output: XYZ_Output = XYZ_Output::new(
+        let xyz_output: XyzOutput = XyzOutput::new(
             self.n_atoms,
             self.coordinates.view(),
             self.atomic_numbers.clone(),
@@ -358,7 +357,7 @@ impl Simulation {
 
         let total_energy: f64 = self.kinetic_energy + self.energies[self.state];
         let energy_diff: f64 = total_energy - old_energy;
-        let full: Standard_Output = Standard_Output::new(
+        let full: StandardOutput = StandardOutput::new(
             self.actual_time,
             self.coordinates.view(),
             self.velocities.view(),
@@ -374,7 +373,7 @@ impl Simulation {
         write_state(self.state);
 
         if self.config.hopping_config.coupling_flag > -1 {
-            let hopping_out: hopping_output = hopping_output::new(
+            let hopping_out: HoppingOutput = HoppingOutput::new(
                 self.actual_time,
                 self.coefficients.view(),
                 self.nonadiabatic_scalar.view(),
@@ -392,12 +391,12 @@ impl Simulation {
         self.actual_time += self.stepsize;
     }
 
-    pub fn initialize_quantum_chem_interface(&mut self, interface: &mut QuantumChemistryInterface) {
+    pub fn initialize_quantum_chem_interface(&mut self, interface: &mut dyn QuantumChemistryInterface) {
         let tmp: (Array1<f64>, Array2<f64>, Array3<f64>, Array3<f64>) =
             interface.compute_data(self.coordinates.view(), self.state);
 
         self.energies = tmp.0;
-        let mut forces: Array2<f64> = tmp.1;
+        let forces: Array2<f64> = tmp.1;
         for (idx, mass) in self.masses.iter().enumerate() {
             self.forces
                 .slice_mut(s![idx, ..])
@@ -426,7 +425,7 @@ impl Simulation {
         self.s_mat = self.nonadiabatic_scalar.clone() * self.stepsize;
     }
 
-    pub fn get_quantum_chem_data(&mut self, interface: &mut QuantumChemistryInterface) {
+    pub fn get_quantum_chem_data(&mut self, interface: &mut dyn QuantumChemistryInterface) {
         // calculate energy, forces, etc for new coords
         // let mut handler: Bagel_Handler = self.handler.clone().unwrap();
 
@@ -434,7 +433,7 @@ impl Simulation {
             interface.compute_data(self.coordinates.view(), self.state);
 
         self.energies = tmp.0;
-        let mut forces: Array2<f64> = tmp.1;
+        let forces: Array2<f64> = tmp.1;
         for (idx, mass) in self.masses.iter().enumerate() {
             self.forces
                 .slice_mut(s![idx, ..])
@@ -467,7 +466,7 @@ impl Simulation {
         self.s_mat = self.nonadiabatic_scalar.clone() * self.stepsize;
     }
 
-    pub fn initiate_trajectory(&mut self, interface: &mut QuantumChemistryInterface) {
+    pub fn initiate_trajectory(&mut self, interface: &mut dyn QuantumChemistryInterface) {
         self.coordinates = self.shift_to_center_of_mass();
         self.velocities = self.eliminate_translation_rotation_from_velocity();
 
@@ -476,7 +475,7 @@ impl Simulation {
         self.kinetic_energy = self.get_kinetic_energy();
     }
 
-    pub fn restart_trajectory(&mut self, interface: &mut QuantumChemistryInterface) {
+    pub fn restart_trajectory(&mut self, interface: &mut dyn QuantumChemistryInterface) {
         let temp: (Array2<f64>, Array2<f64>, Array3<f64>, Array1<c64>) = read_restart_parameters();
         self.coordinates = temp.0;
         self.velocities = temp.1;

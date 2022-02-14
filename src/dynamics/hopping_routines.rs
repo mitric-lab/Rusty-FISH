@@ -1,10 +1,9 @@
-use crate::constants;
 use crate::initialization::Simulation;
-use hashbrown::HashMap;
+
 use ndarray::prelude::*;
-use ndarray::{array, Array, Array1, Array2, ArrayView1, ArrayView2, Axis};
+use ndarray::{Array1, Array2, ArrayView1};
 use ndarray_linalg::c64;
-use ndarray_linalg::{eigh, into_col, into_row, solve, Eigh, Inverse, UPLO};
+
 use rand::distributions::Standard;
 use rand::prelude::*;
 use std::ops::DivAssign;
@@ -15,7 +14,7 @@ impl Simulation {
         let mut occupations: Array1<f64> = Array1::zeros(nstates);
         let mut derivatives: Array1<f64> = Array1::zeros(nstates);
 
-        for state in (0..nstates) {
+        for state in 0..nstates {
             occupations[state] =
                 self.coefficients[state].re.powi(2) + self.coefficients[state].im.powi(2);
             derivatives[state] = (occupations[state]
@@ -28,7 +27,7 @@ impl Simulation {
             let mut probability: f64 = 0.0;
             let mut states_to_hopp: Vec<usize> = Vec::new();
 
-            for k in (0..nstates) {
+            for k in 0..nstates {
                 if derivatives[k] > 0.0 {
                     states_to_hopp.push(k);
                     probability += derivatives[k];
@@ -50,7 +49,7 @@ impl Simulation {
             let random_number: f64 = StdRng::from_entropy().sample(Standard);
 
             let mut sum: f64 = 0.0;
-            for state in (0..nstates) {
+            for state in 0..nstates {
                 let prob: f64 = hopping_probabilities[state];
                 if prob > 0.0 {
                     sum += prob;
@@ -67,7 +66,7 @@ impl Simulation {
         //  the ground state, TD-DFT will break down. In this case, a transition
         //  to the ground state is forced.
         let threshold: f64 = 0.1 / 27.211;
-        if new_state > 0 && self.config.hopping_config.force_switch_to_gs == true {
+        if new_state > 0 && self.config.hopping_config.force_switch_to_gs {
             let gap: f64 = self.energies[new_state] - self.energies[0];
             if gap < threshold {
                 println!("Conical intersection to ground state reached.");
@@ -81,7 +80,7 @@ impl Simulation {
         self.state = new_state;
     }
 
-    pub fn get_decoherence_correction(&self, decoherence_constant: f64) -> (Array1<c64>) {
+    pub fn get_decoherence_correction(&self, decoherence_constant: f64) -> Array1<c64> {
         // decoherence correction according to eqn. (17) in
         // G. Granucci, M. Persico,
         // "Critical appraisal of the fewest switches algorithm for surface hopping",
@@ -95,11 +94,11 @@ impl Simulation {
 
         let mut sm: f64 = 0.0;
         let mut new_coefficients: Array1<c64> = self.coefficients.clone();
-        for state in (0..self.config.nstates) {
+        for state in 0..self.config.nstates {
             if state == self.state {
                 let tauij: f64 = 1.0 / (self.energies[state] - self.energies[self.state]).abs()
                     * (1.0 + decoherence_constant / self.kinetic_energy);
-                new_coefficients[state] = new_coefficients[state] * (-self.stepsize / tauij).exp();
+                new_coefficients[state] *= (-self.stepsize / tauij).exp();
                 sm += new_coefficients[state].re.powi(2) + new_coefficients[state].im.powi(2);
             }
         }
@@ -107,7 +106,7 @@ impl Simulation {
             new_coefficients[self.state].re.powi(2) + new_coefficients[self.state].im.powi(2);
         new_coefficients[self.state] = new_coefficients[self.state] * (1.0 - sm).sqrt() / tmp;
 
-        return new_coefficients;
+        new_coefficients
     }
 
     // Rescaling routines for combined nonadiabatic/field-coupled dynamics
@@ -117,22 +116,18 @@ impl Simulation {
         // hop is rejected when kinetic energy is too low
         let mut state: usize = self.state;
         let mut new_velocities: Array2<f64> = self.velocities.clone();
-        let mut scale_velocities: bool = false;
         if self.state > old_state
             && (self.energies[self.state] - self.energies[old_state]) > self.kinetic_energy
         {
             state = old_state;
-        } else {
-            if self.kinetic_energy > 0.0 {
-                scale_velocities = true;
-                let vel_scale: f64 = ((self.kinetic_energy
-                    + (self.energies[old_state] - self.energies[self.state]))
-                    / self.kinetic_energy)
-                    .sqrt();
-                new_velocities = new_velocities * vel_scale;
-            }
+        } else if self.kinetic_energy > 0.0 {
+            let vel_scale: f64 = ((self.kinetic_energy
+                + (self.energies[old_state] - self.energies[self.state]))
+                / self.kinetic_energy)
+                .sqrt();
+            new_velocities *= vel_scale;
         }
-        return (new_velocities, state);
+        (new_velocities, state)
     }
 
     pub fn rescaled_velocities(&self, old_state: usize, last_state: usize) -> (Array2<f64>, usize) {
@@ -152,12 +147,12 @@ impl Simulation {
         }
         let mut state: usize = new_state;
 
-        let delta_e: f64 = (self.energies[old_state] - self.energies[new_state]);
+        let delta_e: f64 = self.energies[old_state] - self.energies[new_state];
         let mut k: usize = 0;
         let mut flag: usize = 0;
 
-        for j in (first_state + 1..last_state + 1) {
-            for i in (first_state..j) {
+        for j in first_state + 1..last_state + 1 {
+            for i in first_state..j {
                 if j == jj && i == ii {
                     flag = 1;
                     break;
@@ -173,44 +168,42 @@ impl Simulation {
             // rescaling only if coupling between initial and final states exists
             let mut mass_weigh_nad: Array2<f64> = factor * &nonadiabatic_new.slice(s![k, .., ..]);
 
-            for i in (0..self.n_atoms) {
+            for i in 0..self.n_atoms {
                 mass_weigh_nad
                     .slice_mut(s![i, ..])
                     .div_assign(self.masses[i]);
             }
 
             let mut a: f64 = 0.0;
-            for i in (0..self.n_atoms) {
+            for i in 0..self.n_atoms {
                 a += nonadiabatic_new
                     .slice(s![k, i, ..])
                     .dot(&nonadiabatic_new.slice(s![k, i, ..]))
                     / self.masses[i];
             }
-            a = 0.5 * a;
+            a *= 0.5;
 
             let mut b: f64 = 0.0;
-            for i in (0..self.n_atoms) {
+            for i in 0..self.n_atoms {
                 b += self
                     .velocities
                     .slice(s![i, ..])
                     .dot(&nonadiabatic_new.slice(s![k, i, ..]));
             }
+
             let val: f64 = b.powi(2) + 4.0 * a * delta_e;
             let mut gamma: f64 = 0.0;
-
             if val < 0.0 {
                 state = old_state;
                 gamma = b / a;
+            } else if b < 0.0 {
+                gamma = (b + val.sqrt()) / (2.0 * a);
             } else {
-                if b < 0.0 {
-                    gamma = (b + val.sqrt()) / (2.0 * a);
-                } else {
-                    gamma = (b - val.sqrt()) / (2.0 * a);
-                }
+                gamma = (b - val.sqrt()) / (2.0 * a);
             }
             new_velocities = &self.velocities - &(gamma * mass_weigh_nad);
         }
-        return (new_velocities, state);
+        (new_velocities, state)
     }
 
     pub fn scale_velocities_temperature(&self) -> Array2<f64> {
@@ -221,7 +214,7 @@ impl Simulation {
                 * (self.config.temperature / curr_temperature - 1.0))
             .sqrt();
         let new_velocities: Array2<f64> = scaling_factor * &self.velocities;
-        return new_velocities;
+        new_velocities
     }
 
     pub fn scale_velocities_const_energy(
@@ -245,7 +238,7 @@ impl Simulation {
 
             new_velocities = scaling_factor * &self.velocities;
         }
-        return new_velocities;
+        new_velocities
     }
 }
 
@@ -253,9 +246,9 @@ pub fn normalize_coefficients(coefficients: ArrayView1<c64>) -> Array1<c64> {
     let mut norm: f64 = 0.0;
     let nstates: usize = coefficients.len();
 
-    for state in (0..nstates) {
+    for state in 0..nstates {
         norm += coefficients[state].re.powi(2) + coefficients[state].im.powi(2);
     }
     let new_coefficients: Array1<c64> = coefficients.to_owned() / norm.sqrt();
-    return new_coefficients;
+    new_coefficients
 }
