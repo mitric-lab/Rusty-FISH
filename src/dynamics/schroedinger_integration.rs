@@ -332,7 +332,7 @@ fn get_complete_field_coupling(
         for i in 0..nstates {
             for j in 0..nstates {
                 let dipole_xyz: ArrayView1<f64> = dipole.slice(s![i, j, ..]);
-                let dipole_dot: f64 = dipole_xyz.dot(&dipole_xyz);
+                let dipole_dot: f64 = (dipole_xyz.dot(&dipole_xyz)).sqrt();
                 coupling[[i, j]] = dipole_dot;
             }
         }
@@ -376,7 +376,7 @@ fn get_field_coupling(
         for i in 0..nstates {
             for j in 0..nstates {
                 let dipole_xyz: ArrayView1<f64> = dipole.slice(s![i, j, ..]);
-                let dipole_dot: f64 = dipole_xyz.dot(&dipole_xyz);
+                let dipole_dot: f64 = (dipole_xyz.dot(&dipole_xyz)).sqrt();
                 coupling[[i, j]] = dipole_dot;
             }
         }
