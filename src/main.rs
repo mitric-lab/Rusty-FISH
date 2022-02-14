@@ -16,10 +16,9 @@ use crate::defaults::CONFIG_FILE_NAME;
 use crate::initialization::io::{read_file_to_frame, DynamicConfiguration};
 use crate::initialization::Simulation;
 use crate::initialization::SystemData;
-use crate::interface::bagel::*;
+use crate::interface::QuantumChemistryInterface;
 use chemfiles::Frame;
 use ndarray::Array2;
-use crate::interface::QuantumChemistryInterface;
 
 mod constants;
 mod defaults;
@@ -32,11 +31,6 @@ mod output;
 extern crate clap;
 
 fn main() {
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(1)
-        .build_global()
-        .unwrap();
-
     let matches = App::new(crate_name!())
         .version(crate_version!())
         .about("software package for molecular dynamics using field-induced surface hopping")
@@ -87,8 +81,4 @@ fn main() {
 
     // Generate system
     let system: SystemData = SystemData::from((frame, config));
-    // Initialize dynamics
-    let mut handler:Bagel_Handler = Bagel_Handler::from(&system);
-    let mut dynamic: Simulation = Simulation::new(&system,&mut handler);
-    dynamic.verlet_dynamics();
 }

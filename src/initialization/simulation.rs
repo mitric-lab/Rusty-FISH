@@ -2,14 +2,14 @@ use crate::constants;
 use crate::initialization::system::SystemData;
 use crate::initialization::velocities::*;
 use crate::initialization::DynamicConfiguration;
-use crate::interface::bagel::*;
+use crate::interface::QuantumChemistryInterface;
 use ndarray::prelude::*;
 use ndarray_linalg::c64;
-use crate::interface::QuantumChemistryInterface;
 
-pub struct Simulation<'a> {
+pub struct Simulation {
     pub stepsize: f64,
-    pub delta_runge_kutta: f64,
+    pub actual_step: f64,
+    pub actual_time: f64,
     pub total_mass: f64,
     pub config: DynamicConfiguration,
     pub coefficients: Array1<c64>,
@@ -34,21 +34,13 @@ pub struct Simulation<'a> {
     pub time_coupling: f64,
     pub saved_p_rand: Array2<f64>,
     pub saved_efactor: Array1<f64>,
-    pub start_econst: f64,
-    pub interface:&'a mut QuantumChemistryInterface,
-    // pub handler: Option<Bagel_Handler>,
-    // pub interface:Box<QuantumChemistryInterface>
-    // interface:QuantumChemistryInterface,
+    pub t_tot_last: Option<Array2<f64>>,
 }
 
-impl<'a> Simulation<'a> {
-    pub fn new(
-        system: &SystemData,
-        interface:&'a mut QuantumChemistryInterface,
-    ) -> Simulation<'a> {
-        let config:DynamicConfiguration = system.config.clone();
+impl Simulation {
+    pub fn new(system: &SystemData) -> Simulation {
+        let config: DynamicConfiguration = system.config.clone();
         let stepsize_au: f64 = config.stepsize * constants::FS_TO_AU;
-        let delta_runge_kutta: f64 = stepsize_au / config.n_small_steps as f64;
 
         // initialize coefficients
         let mut coefficients: Array1<c64> = Array1::zeros(config.nstates);
@@ -57,7 +49,6 @@ impl<'a> Simulation<'a> {
         let total_mass: f64 = system.masses.sum();
 
         // initiate parameters
-        let econst: f64 = config.start_econst * constants::FS_TO_AU;
         let last_forces: Array3<f64> = Array3::zeros((3, system.n_atoms, 3));
         let forces: Array2<f64> = Array2::zeros((system.n_atoms, 3));
         let energies: Array1<f64> = Array1::zeros(config.nstates);
@@ -76,14 +67,17 @@ impl<'a> Simulation<'a> {
         if config.velocity_generation == 0 {
             // initialize velocities from boltzmann distribution
             velocities = initialize_velocities(system, config.temperature);
-        } else {
-            // get velocities from inputs
         }
+        println!("velocities {}", velocities);
+        // for i in 0..system.n_atoms{
+        //     println!("{},",velocities.slice(s![i,..]));
+        // }
 
         Simulation {
             state: config.initial_state,
+            actual_step: 0.0,
+            actual_time: 0.0,
             stepsize: stepsize_au,
-            delta_runge_kutta: delta_runge_kutta,
             total_mass: total_mass,
             time_coupling: config.time_coupling * constants::FS_TO_AU,
             config: config,
@@ -107,8 +101,7 @@ impl<'a> Simulation<'a> {
             dipole_old: dipole,
             saved_efactor: efactor,
             saved_p_rand: saved_p_rand,
-            start_econst: econst,
-            interface:interface,
+            t_tot_last: None,
         }
     }
 }

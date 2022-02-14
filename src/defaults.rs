@@ -2,12 +2,6 @@
 pub const CONFIG_FILE_NAME: &str = "fish.toml";
 // restart file
 pub const RESTART_FILE_NAME: &str = "dynamics_restart.out";
-// bagel file
-pub const BAGEL_FILE_NAME: &str = "bagel.json";
-// changed bagel file
-pub const BAGEL_EDIT_NAME: &str = "bagel_edit.json";
-// pulse parameter file
-pub const PULSE_CONFIG: &str = "pulse_parameters_gaussian.toml";
 // charge of the molecule in a.u.
 pub const CHARGE: i8 = 0;
 // spin multiplicity 2S + 1
@@ -19,7 +13,7 @@ pub const NSTEP: usize = 1000;
 // nuclear stepsize in fs
 pub const STEPSIZE: f64 = 0.1;
 // number of small steps for hopping per nuclear step
-pub const N_SMALL_STEPS: usize = 2500;
+pub const INTEGRATION_STEPS: usize = 2500;
 // dynamics mode: "T" for constant temperature,
 // "L" for Langevin dynamics, something else for constant energy
 pub const DYN_MODE: char = 'E';
@@ -44,14 +38,9 @@ pub const INITIAL_STATE: usize = 0;
 pub const NSTATES: usize = 1;
 // extrapolate forces
 pub const EXTP: bool = false;
-
-pub const STATES_REDUCED: bool = false;
 // -1: no coupling, 0: only field coupling
 // 1: only nonadiabatic coupling, 2: both couplings
 pub const COUPLING: i8 = -1;
-// 0: numerical field, 1: analytic field, 2: using Fourier components
-// 3: reconstruct field from spectral amplitudes and phases
-pub const FIELDFLAG: u8 = 1;
 // INTEGRATION OF ELECTRONIC COEFFICIENTS
 // In the presence of an external field (COUPLING = 0 or 2) the electronic Schroedinger
 // equation will be integrated numerically using a 4th order Runge-Kutta scheme.

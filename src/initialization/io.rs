@@ -30,7 +30,7 @@ fn default_stepsize() -> f64 {
     STEPSIZE
 }
 fn default_n_small_steps() -> usize {
-    N_SMALL_STEPS
+    INTEGRATION_STEPS
 }
 fn default_dyn_mode() -> char {
     DYN_MODE
@@ -42,7 +42,7 @@ fn default_friction() -> f64 {
     FRICTION
 }
 fn default_inputflag() -> String {
-    String::from("new")
+    INPUTFLAG.to_string()
 }
 fn default_print_coupling() -> bool {
     PRINT_COUPLING
@@ -59,20 +59,14 @@ fn default_initial_state() -> usize {
 fn default_nstates() -> usize {
     NSTATES
 }
-fn default_states_reduced() -> bool {
-    STATES_REDUCED
-}
 fn default_coupling() -> i8 {
     COUPLING
 }
-fn default_fieldflag() -> u8 {
-    FIELDFLAG
-}
 fn default_integration_type() -> String {
-    String::from("LD")
+    INTEGRATION_TYPE.to_string()
 }
 fn default_rescale_type() -> String {
-    String::from("uniform")
+    RESCALE_TYPE.to_string()
 }
 fn default_scalar_coupling_treshold() -> f64 {
     SCALAR_COUPLING_TRESHOLD
@@ -105,20 +99,25 @@ fn default_velocity_generation() -> u8 {
 fn default_number_pulses() -> usize {
     1
 }
-fn default_pulse_param_1() -> f64 {
+fn default_e0() -> f64 {
     0.1
 }
-fn default_pulse_param_2() -> f64 {
+fn default_omega() -> f64 {
     0.1
 }
-fn default_pulse_param_3() -> f64 {
+fn default_gaussian_factor() -> f64 {
     0.1
 }
-fn default_pulse_param_4() -> f64 {
+fn default_time_delay() -> f64 {
     0.1
 }
-fn default_pulse_param_5() -> f64 {
-    0.1
+fn default_hopping_config() -> HoppingConfiguration {
+    let hopping_config: HoppingConfiguration = toml::from_str("").unwrap();
+    return hopping_config;
+}
+fn default_pulse_config() -> PulseConfiguration {
+    let pulse_config: PulseConfiguration = toml::from_str("").unwrap();
+    return pulse_config;
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -129,8 +128,6 @@ pub struct DynamicConfiguration {
     pub nstep: usize,
     #[serde(default = "default_stepsize")]
     pub stepsize: f64,
-    #[serde(default = "default_n_small_steps")]
-    pub n_small_steps: usize,
     #[serde(default = "default_dyn_mode")]
     pub dyn_mode: char,
     #[serde(default = "default_temperature")]
@@ -139,10 +136,6 @@ pub struct DynamicConfiguration {
     pub friction: f64,
     #[serde(default = "default_inputflag")]
     pub inputflag: String,
-    #[serde(default = "default_print_coupling")]
-    pub print_coupling: bool,
-    #[serde(default = "default_print_coefficients")]
-    pub print_coefficients: u8,
     #[serde(default = "default_nuclear_propagation")]
     pub nuclear_propagation: char,
     #[serde(default = "default_charge")]
@@ -151,34 +144,20 @@ pub struct DynamicConfiguration {
     pub initial_state: usize,
     #[serde(default = "default_nstates")]
     pub nstates: usize,
-    #[serde(default = "default_states_reduced")]
-    pub states_reduced: bool,
-    #[serde(default = "default_coupling")]
-    pub coupling: i8,
-    #[serde(default = "default_fieldflag")]
-    pub fieldflag: u8,
-    #[serde(default = "default_integration_type")]
-    pub integration_type: String,
-    #[serde(default = "default_rescale_type")]
-    pub rescale_type: String,
-    #[serde(default = "default_scalar_coupling_treshold")]
-    pub scalar_coupling_treshold: f64,
-    #[serde(default = "default_force_switch_to_gs")]
-    pub force_switch_to_gs: bool,
-    #[serde(default = "default_artificial_energy_conservation")]
-    pub artificial_energy_conservation: bool,
     #[serde(default = "default_extrapolate_forces")]
     pub extrapolate_forces: bool,
     #[serde(default = "default_gs_dynamic")]
     pub gs_dynamic: bool,
     #[serde(default = "default_start_econst")]
-    pub start_econst: f64,
-    #[serde(default = "default_decoherence_correction")]
-    pub decoherence_correction: bool,
-    #[serde(default = "default_time_coupling")]
     pub time_coupling: f64,
     #[serde(default = "default_velocity_generation")]
     pub velocity_generation: u8,
+    #[serde(default = "default_artificial_energy_conservation")]
+    pub artificial_energy_conservation: bool,
+    #[serde(default = "default_hopping_config")]
+    pub hopping_config: HoppingConfiguration,
+    #[serde(default = "default_pulse_config")]
+    pub pulse_config: PulseConfiguration,
 }
 
 impl DynamicConfiguration {
@@ -204,36 +183,37 @@ impl DynamicConfiguration {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct Pulse_Configuration {
-    #[serde(default = "default_number_pulses")]
-    pub number_pulses: usize,
-    #[serde(default = "default_pulse_param_1")]
-    pub pulse_param_1: f64,
-    #[serde(default = "default_pulse_param_2")]
-    pub pulse_param_2: f64,
-    #[serde(default = "default_pulse_param_3")]
-    pub pulse_param_3: f64,
-    #[serde(default = "default_pulse_param_4")]
-    pub pulse_param_4: f64,
+pub struct HoppingConfiguration {
+    #[serde(default = "default_coupling")]
+    pub coupling_flag: i8,
+    #[serde(default = "default_n_small_steps")]
+    pub integration_steps: usize,
+    #[serde(default = "default_integration_type")]
+    pub integration_type: String,
+    #[serde(default = "default_scalar_coupling_treshold")]
+    pub scalar_coupling_treshold: f64,
+    #[serde(default = "default_force_switch_to_gs")]
+    pub force_switch_to_gs: bool,
+    #[serde(default = "default_rescale_type")]
+    pub rescale_type: String,
+    #[serde(default = "default_decoherence_correction")]
+    pub decoherence_correction: bool,
+    #[serde(default = "default_start_econst")]
+    pub start_econst: f64,
 }
 
-impl Pulse_Configuration {
-    pub fn new() -> Self {
-        let config_file_path: &Path = Path::new(PULSE_CONFIG);
-        let mut config_string: String = if config_file_path.exists() {
-            fs::read_to_string(config_file_path).expect("Unable to read config file")
-        } else {
-            String::from("")
-        };
-        // load the configration settings
-        let config: Self = toml::from_str(&config_string).unwrap();
-        // save the configuration file if it does not exist already
-        if config_file_path.exists() == false {
-            config_string = toml::to_string(&config).unwrap();
-            fs::write(config_file_path, config_string).expect("Unable to write config file");
-        }
-        return config;
-    }
+#[derive(Serialize, Deserialize, Clone)]
+pub struct PulseConfiguration {
+    #[serde(default = "default_number_pulses")]
+    pub number_pulses: usize,
+    #[serde(default = "default_e0")]
+    pub e0: f64,
+    #[serde(default = "default_omega")]
+    pub omega: f64,
+    #[serde(default = "default_gaussian_factor")]
+    pub gaussian_factor: f64,
+    #[serde(default = "default_time_delay")]
+    pub time_delay: f64,
 }
 
 /// Read a xyz-geometry file like .xyz or .pdb and returns a [Frame](chemfiles::Frame)
@@ -262,7 +242,7 @@ pub fn frame_to_coordinates(frame: Frame) -> (Vec<u8>, Array2<f64>) {
     positions = positions / constants::BOHR_TO_ANGS;
     // read the atomic number of each coordinate
     let atomic_numbers: Vec<u8> = (0..frame.size() as u64)
-        .map(|i | frame.atom(i as usize).atomic_number() as u8)
+        .map(|i| frame.atom(i as usize).atomic_number() as u8)
         .collect();
 
     // let mut smiles_repr: Trajectory = Trajectory::memory_writer("SMI").unwrap();

@@ -1,0 +1,35 @@
+verbose = 0
+nstep = 1000
+stepsize = 0.1
+dyn_mode = "E"
+temperature = 300.0
+friction = 0.015585
+inputflag = "new"
+nuclear_propagation = "v"
+charge = 0
+initial_state = 0
+nstates = 1
+states_reduced = false
+fieldflag = 1
+extrapolate_forces = false
+gs_dynamic = true
+time_coupling = 0.0
+velocity_generation = 0
+artificial_energy_conservation = false
+
+[hopping_config]
+coupling_flag = -1
+integration_steps = 2500
+integration_type = "auto"
+scalar_coupling_treshold = 0.01
+force_switch_to_gs = true
+rescale_type = "uniform"
+decoherence_correction = false
+start_econst = 0.0
+
+[pulse_config]
+number_pulses = 1
+e0 = 0.1
+omega = 0.1
+gaussian_factor = 0.1
+time_delay = 0.1
