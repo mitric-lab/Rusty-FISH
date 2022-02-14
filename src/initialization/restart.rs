@@ -1,5 +1,4 @@
 use crate::defaults;
-
 use crate::output::RestartOutput;
 use ndarray::prelude::*;
 use ndarray_linalg::c64;

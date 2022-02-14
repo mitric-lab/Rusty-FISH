@@ -1,9 +1,5 @@
-
 use ndarray::prelude::*;
 use ndarray::{Array2, ArrayView1, ArrayView2};
-
-
-
 
 pub fn align_dipoles(dipoles: ArrayView3<f64>) -> Array3<f64> {
     let mut new_dipoles: Array3<f64> = dipoles.to_owned();

@@ -1,8 +1,5 @@
 use crate::constants;
-use crate::dynamics::{
-    align_nonadiabatic_coupling, get_nonadiabatic_scalar_coupling,
-};
-
+use crate::dynamics::{align_nonadiabatic_coupling, get_nonadiabatic_scalar_coupling};
 use crate::initialization::restart::read_restart_parameters;
 use crate::initialization::Simulation;
 use crate::interface::QuantumChemistryInterface;
@@ -103,9 +100,7 @@ impl Simulation {
                 // calculate the state of the simulation after the hopping procedure
                 self.get_new_state(old_coeff.view());
 
-                if self.actual_time > econst
-                    && self.config.hopping_config.decoherence_correction
-                {
+                if self.actual_time > econst && self.config.hopping_config.decoherence_correction {
                     // The decoherence correction should be turned on only
                     // if energy conservation is turned on, too.
                     // During the action of an explicit electric field pulse,
@@ -300,9 +295,7 @@ impl Simulation {
                 // calculate the state of the simulation after the hopping procedure
                 self.get_new_state(old_coeff.view());
 
-                if self.actual_time > econst
-                    && self.config.hopping_config.decoherence_correction
-                {
+                if self.actual_time > econst && self.config.hopping_config.decoherence_correction {
                     // The decoherence correction should be turned on only
                     // if energy conservation is turned on, too.
                     // During the action of an explicit electric field pulse,
@@ -391,7 +384,10 @@ impl Simulation {
         self.actual_time += self.stepsize;
     }
 
-    pub fn initialize_quantum_chem_interface(&mut self, interface: &mut dyn QuantumChemistryInterface) {
+    pub fn initialize_quantum_chem_interface(
+        &mut self,
+        interface: &mut dyn QuantumChemistryInterface,
+    ) {
         let tmp: (Array1<f64>, Array2<f64>, Array3<f64>, Array3<f64>) =
             interface.compute_data(self.coordinates.view(), self.state);
 

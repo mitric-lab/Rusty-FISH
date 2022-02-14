@@ -1,9 +1,7 @@
 use crate::initialization::Simulation;
-
 use ndarray::prelude::*;
 use ndarray::{Array1, Array2, ArrayView1};
 use ndarray_linalg::c64;
-
 use rand::distributions::Standard;
 use rand::prelude::*;
 use std::ops::DivAssign;
@@ -33,7 +31,6 @@ impl Simulation {
                     probability += derivatives[k];
                 }
             }
-            println!("Probability {}", probability);
             for state in states_to_hopp {
                 let tmp: f64 = old_coefficients[self.state].re.powi(2)
                     + old_coefficients[self.state].im.powi(2);
@@ -192,15 +189,15 @@ impl Simulation {
             }
 
             let val: f64 = b.powi(2) + 4.0 * a * delta_e;
-            let mut gamma: f64 = 0.0;
-            if val < 0.0 {
+
+            let gamma: f64 = if val < 0.0 {
                 state = old_state;
-                gamma = b / a;
+                b / a
             } else if b < 0.0 {
-                gamma = (b + val.sqrt()) / (2.0 * a);
+                (b + val.sqrt()) / (2.0 * a)
             } else {
-                gamma = (b - val.sqrt()) / (2.0 * a);
-            }
+                (b - val.sqrt()) / (2.0 * a)
+            };
             new_velocities = &self.velocities - &(gamma * mass_weigh_nad);
         }
         (new_velocities, state)

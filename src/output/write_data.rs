@@ -3,13 +3,11 @@ use ndarray::prelude::*;
 use ndarray::{Array2, ArrayView2};
 use ndarray_linalg::c64;
 use serde::{Deserialize, Serialize};
-
 use serde_yaml;
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
 use std::path::Path;
-
 use toml;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -59,11 +57,7 @@ pub struct XyzOutput {
 }
 
 impl XyzOutput {
-    pub fn new(
-        n_atoms: usize,
-        coordinates: ArrayView2<f64>,
-        atomic_numbers: Vec<u8>,
-    ) -> XyzOutput {
+    pub fn new(n_atoms: usize, coordinates: ArrayView2<f64>, atomic_numbers: Vec<u8>) -> XyzOutput {
         XyzOutput {
             n_atoms,
             coordinates: coordinates.to_owned() * constants::BOHR_TO_ANGS,

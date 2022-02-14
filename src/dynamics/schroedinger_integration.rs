@@ -1,8 +1,7 @@
 use crate::initialization::PulseConfiguration;
 use crate::initialization::Simulation;
 use ndarray::prelude::*;
-use ndarray::{array, Array, Array1, Array2, ArrayView1, ArrayView2, Axis};
-
+use ndarray::{Array, Array1, Array2, ArrayView1, ArrayView2, Axis};
 use ndarray_linalg::{c64, Eig, Eigh, Inverse, UPLO};
 
 impl Simulation {
@@ -116,14 +115,10 @@ impl Simulation {
         let (eig, eig_vec): (Array1<c64>, Array2<c64>) = u_1.eig().unwrap();
         let diag: Array1<c64> = eig.mapv(|val| val.exp());
         let u_mat: Array2<c64> = eig_vec.dot(&Array::from_diag(&diag).dot(&eig_vec.inv().unwrap()));
-        // let u: Array2<c64> =
-        //     h_interp.mapv(|val| (-c64::new(0.0, 1.0) * val* stepsize).exp());
-        // println!("U {}",u);
 
         // at the beginning of the time step the adiabatic and diabatic basis is assumed to coincide
         // new electronic coefficients c(t+dt) in the adiabatic basis
         let complex_t_inv: Array2<c64> = t_inv.mapv(|val| val * c64::new(1.0, 0.0));
-        // let c_1: Array1<c64> = u_mat.dot(&c_0).dot(&complex_t_inv.t());
         let c_1: Array1<c64> = complex_t_inv.t().dot(&u_mat.dot(&c_0));
 
         // norm of electronic wavefunction
@@ -310,50 +305,6 @@ fn get_nonadiabatic_coupling(
     nonadiabatic
 }
 
-fn get_complete_field_coupling(
-    dipole: ArrayView3<f64>,
-    nstates: usize,
-    efield: ArrayView1<f64>,
-    rot_avg: bool,
-) -> Array3<f64> {
-    let length = efield.len();
-    let mut efield_coupling: Array3<f64> = Array3::zeros((length, nstates, nstates));
-
-    if rot_avg {
-        let mut coupling: Array2<f64> = Array2::zeros((nstates, nstates));
-        for i in 0..nstates {
-            for j in 0..nstates {
-                let dipole_xyz: ArrayView1<f64> = dipole.slice(s![i, j, ..]);
-                let dipole_dot: f64 = (dipole_xyz.dot(&dipole_xyz)).sqrt();
-                coupling[[i, j]] = dipole_dot;
-            }
-        }
-        coupling *= -1.0 / (3.0_f64.sqrt());
-        for i in 0..length {
-            efield_coupling
-                .slice_mut(s![i, .., ..])
-                .assign(&(&coupling * efield[i]))
-        }
-    } else {
-        let evec: Array1<f64> = (-1.0 / 3.0_f64.sqrt()) * Array1::ones(3);
-        let evec_normalized = &evec / (evec.dot(&evec)).sqrt();
-
-        let coupling = dipole
-            .into_shape([nstates * nstates, 3])
-            .unwrap()
-            .dot(&evec_normalized)
-            .into_shape([nstates, nstates])
-            .unwrap();
-
-        for i in 0..length {
-            efield_coupling
-                .slice_mut(s![i, .., ..])
-                .assign(&(&coupling * efield[i]))
-        }
-    }
-    efield_coupling
-}
-
 fn get_field_coupling(
     dipole: ArrayView3<f64>,
     n: usize,
@@ -368,8 +319,8 @@ fn get_field_coupling(
         for i in 0..nstates {
             for j in 0..nstates {
                 let dipole_xyz: ArrayView1<f64> = dipole.slice(s![i, j, ..]);
-                let dipole_dot: f64 = (dipole_xyz.dot(&dipole_xyz)).sqrt();
-                coupling[[i, j]] = dipole_dot;
+                let dipole_norm: f64 = (dipole_xyz.dot(&dipole_xyz)).sqrt();
+                coupling[[i, j]] = dipole_norm;
             }
         }
         coupling = coupling * (-1.0 / (3.0_f64.sqrt())) * efield[efield_index];
@@ -424,17 +375,11 @@ pub fn get_local_diabatization(
 ) -> (Array1<c64>, Array2<f64>, Array2<f64>) {
     // Loewding orthogonalization of the S matrix
     // see eqns. (B5) and (B6) in [2]
-    println!("overlap matrix {}", overlap_matrix);
-    let overlap_matrix: Array2<f64> = array![[1., 2., 3.], [2., 4., 4.], [3., 4., 5.]];
-
     let s_ts: Array2<f64> = overlap_matrix.t().dot(&overlap_matrix);
     let (l, o): (Array1<f64>, Array2<f64>) = s_ts.eigh(UPLO::Upper).unwrap();
-    println!("L {}", l);
     let lm12: Array1<f64> = (1.0 / l).mapv(|val| val.sqrt());
-    println!("lm12 {}", lm12);
     // unitary transformation matrix, see eqn. (B5) in [1]
     let t: Array2<f64> = overlap_matrix.dot(&o.dot(&Array::from_diag(&lm12).dot(&o.t())));
-    println!("T {}", t);
     let t_inv: Array2<f64> = t.clone().reversed_axes();
     // electronic coefficients c(t)
     let c_0: Array1<c64> = coefficients.to_owned();
@@ -442,37 +387,27 @@ pub fn get_local_diabatization(
     let e_0: ArrayView1<f64> = energy_last;
     // adiabatic energies at the end of the time step, E(t+dt)
     let e_1: ArrayView1<f64> = energy;
-    println!("E0 {}", e_0);
-    println!("E1 {}", e_1);
 
     // diabatic hamiltonian H(t+dt)
     let h: Array2<f64> = t.dot(&Array::from_diag(&e_1).dot(&t_inv));
-    println!("H {}", h);
     let mut h_interp: Array2<f64> = (Array::from_diag(&e_0) + h) / 2.0;
-    println!("Hinterp {}", h_interp);
 
     // subtract lowest energy from diagonal
     let h_00_val: f64 = h_interp[[0, 0]];
     for ii in 0..h_interp.dim().0 {
         h_interp[[ii, ii]] -= h_00_val;
     }
-    println!("Hinterp v2 {}", h_interp);
-    println!("tstep {}", stepsize);
     // propagator in diabatic basis, see eqn. (11) in [1]
     let u_1: Array2<c64> = h_interp.mapv(|val| -c64::new(0.0, 1.0) * val * stepsize);
     let (eig, eig_vec): (Array1<c64>, Array2<c64>) = u_1.eig().unwrap();
     let diag: Array1<c64> = eig.mapv(|val| val.exp());
     let u_mat: Array2<c64> = eig_vec.dot(&Array::from_diag(&diag).dot(&eig_vec.inv().unwrap()));
-    // let u: Array2<c64> =
-    //     h_interp.mapv(|val| (-c64::new(0.0, 1.0) * val* stepsize).exp());
-    // println!("U {}",u);
-    println!("U matrix: {}", u_mat);
+
     // at the beginning of the time step the adiabatic and diabatic basis is assumed to coincide
     // new electronic coefficients c(t+dt) in the adiabatic basis
     let complex_t_inv: Array2<c64> = t_inv.mapv(|val| val * c64::new(1.0, 0.0));
     // let c_1: Array1<c64> = u_mat.dot(&c_0).dot(&complex_t_inv.t());
     let c_1: Array1<c64> = complex_t_inv.t().dot(&u_mat.dot(&c_0));
-    println!("coeff {}", c_1);
 
     // norm of electronic wavefunction
     let norm_c: f64 = c_1.map(|val| val.re.powi(2) + val.im.powi(2)).sum();

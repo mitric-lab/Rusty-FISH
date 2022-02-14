@@ -2,7 +2,6 @@ use crate::constants;
 use crate::initialization::system::SystemData;
 use crate::initialization::velocities::*;
 use crate::initialization::DynamicConfiguration;
-
 use ndarray::prelude::*;
 use ndarray_linalg::c64;
 
@@ -67,11 +66,10 @@ impl Simulation {
         if config.velocity_generation == 0 {
             // initialize velocities from boltzmann distribution
             velocities = initialize_velocities(system, config.temperature);
+        } else {
+            // read velocities from a file
+            // TODO: read from file
         }
-        println!("velocities {}", velocities);
-        // for i in 0..system.n_atoms{
-        //     println!("{},",velocities.slice(s![i,..]));
-        // }
 
         Simulation {
             state: config.initial_state,

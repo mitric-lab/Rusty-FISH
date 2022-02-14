@@ -15,8 +15,6 @@ use std::path::Path;
 use std::ptr::eq;
 use std::{env, fs};
 
-// TODO: CHANGE STRINGS TO ENUMS
-
 fn default_charge() -> i8 {
     CHARGE
 }
