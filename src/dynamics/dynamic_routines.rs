@@ -222,7 +222,7 @@ pub fn eliminate_translation(
     diff
 }
 
-pub fn my_cross_product(a: ArrayView1<f64>, b: ArrayView1<f64>) -> Array1<f64> {
+pub fn cross_product(a: ArrayView1<f64>, b: ArrayView1<f64>) -> Array1<f64> {
     let arr: Array1<f64> = array![
         a[1] * b[2] - a[2] * b[1],
         a[2] * b[0] - a[0] * b[2],
@@ -240,7 +240,7 @@ pub fn get_angular_momentum(
     for index in 0..masses.len() {
         angular = angular
             + masses[index]
-                * my_cross_product(
+                *cross_product(
                     coordinates.slice(s![index, ..]),
                     velocities.slice(s![index, ..]),
                 );

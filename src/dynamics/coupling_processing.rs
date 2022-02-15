@@ -1,6 +1,7 @@
 use ndarray::prelude::*;
 use ndarray::{Array2, ArrayView1, ArrayView2};
 
+/// Align the transition dipoles of the molecular system.
 pub fn align_dipoles(dipoles: ArrayView3<f64>) -> Array3<f64> {
     let mut new_dipoles: Array3<f64> = dipoles.to_owned();
     for k in 0..dipoles.dim().0 {
@@ -18,6 +19,7 @@ pub fn align_dipoles(dipoles: ArrayView3<f64>) -> Array3<f64> {
     new_dipoles
 }
 
+/// Align the nonadibatic coupling of the system
 pub fn align_nonadiabatic_coupling(
     nonadiabatic_old: ArrayView3<f64>,
     nonadiabatic_new: ArrayView3<f64>,
@@ -52,6 +54,7 @@ pub fn align_nonadiabatic_coupling(
     nonad_new
 }
 
+/// Calculate the scalar nonadibatic coupling
 pub fn get_nonadiabatic_scalar_coupling(
     nstates: usize,
     first_state: usize,
@@ -86,11 +89,4 @@ pub fn get_nonadiabatic_scalar_coupling(
     }
 
     nonadibatic_scalar
-}
-
-pub fn get_gradient_norm(forces: ArrayView2<f64>) -> f64 {
-    let n_at: usize = forces.dim().0;
-    let tmp_force: ArrayView1<f64> = forces.into_shape(3 * n_at).unwrap();
-    let grad_norm: f64 = tmp_force.dot(&tmp_force).abs();
-    grad_norm
 }

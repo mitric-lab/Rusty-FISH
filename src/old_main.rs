@@ -1,29 +1,19 @@
 use clap::{App, Arg};
 use env_logger::Builder;
-
 use log::LevelFilter;
 use std::io::Write;
 use std::path::Path;
-
-
 use std::{env, fs};
-
-
+use chemfiles::Frame;
 use crate::defaults::CONFIG_FILE_NAME;
 use crate::initialization::io::{read_file_to_frame, DynamicConfiguration};
-
 use crate::initialization::SystemData;
-
-use chemfiles::Frame;
-
-
 mod constants;
 mod defaults;
 mod dynamics;
 mod initialization;
 mod interface;
 mod output;
-
 #[macro_use]
 extern crate clap;
 

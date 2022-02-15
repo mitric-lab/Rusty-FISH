@@ -3,7 +3,6 @@ pub use dynamic_routines::*;
 pub use hopping_routines::*;
 pub use schroedinger_integration::*;
 pub use simulation::*;
-
 pub use crate::initialization::velocities::*;
 
 pub mod coupling_processing;

@@ -7,6 +7,7 @@ use rand::prelude::*;
 use std::ops::DivAssign;
 
 impl Simulation {
+    /// Calculate the new electronic state of the molecular system.
     pub fn get_new_state(&mut self, old_coefficients: ArrayView1<c64>) {
         let nstates: usize = self.config.nstates;
         let mut occupations: Array1<f64> = Array1::zeros(nstates);
@@ -52,7 +53,6 @@ impl Simulation {
                     sum += prob;
                     if random_number < sum {
                         new_state = state;
-                        // print coefficients here if required
                         break;
                     }
                 }
@@ -77,18 +77,17 @@ impl Simulation {
         self.state = new_state;
     }
 
+    /// decoherence correction according to eqn. (17) in
+    /// G. Granucci, M. Persico,
+    /// "Critical appraisal of the fewest switches algorithm for surface hopping",
+    /// J. Chem. Phys. 126, 134114 (2007)
+    /// If the trajectory is in the current state K, the coefficients of the other
+    /// states J != K are made to decay exponentially, C'_J = exp(-dt/tau_JK) C_J.
+    /// The decay time is proportional to the inverse of the energy gap |E_J-E_K|,
+    /// so that the coherences C_J*C_K decay very quickly if the energy gap between
+    /// the two states is large. The electronic transitions become irreversible.
+    /// CAUTION! THIS SHOULD NOT BE USED DURING THE TIME A FIELD IS SWITCHED ON!
     pub fn get_decoherence_correction(&self, decoherence_constant: f64) -> Array1<c64> {
-        // decoherence correction according to eqn. (17) in
-        // G. Granucci, M. Persico,
-        // "Critical appraisal of the fewest switches algorithm for surface hopping",
-        // J. Chem. Phys. 126, 134114 (2007)
-        // If the trajectory is in the current state K, the coefficients of the other
-        // states J != K are made to decay exponentially, C'_J = exp(-dt/tau_JK) C_J.
-        // The decay time is proportional to the inverse of the energy gap |E_J-E_K|,
-        // so that the coherences C_J*C_K decay very quickly if the energy gap between
-        // the two states is large. The electronic transitions become irreversible.
-        // CAUTION! THIS SHOULD NOT BE USED DURING THE TIME A FIELD IS SWITCHED ON!
-
         let mut sm: f64 = 0.0;
         let mut new_coefficients: Array1<c64> = self.coefficients.clone();
         for state in 0..self.config.nstates {
@@ -106,9 +105,7 @@ impl Simulation {
         new_coefficients
     }
 
-    // Rescaling routines for combined nonadiabatic/field-coupled dynamics
-    // self.scale is needed to decide how large a part of the velocity is rescaled
-    // for pure nonadiabatic dynamics it can be set to 1.0
+    /// Uniform rescaling of the velocities after the surface hopping procedures
     pub fn uniformly_rescaled_velocities(&self, old_state: usize) -> (Array2<f64>, usize) {
         // hop is rejected when kinetic energy is too low
         let mut state: usize = self.state;
@@ -127,6 +124,7 @@ impl Simulation {
         (new_velocities, state)
     }
 
+    /// Vectorized rescaling of the velocities after the surface hopping procedure
     pub fn rescaled_velocities(&self, old_state: usize, last_state: usize) -> (Array2<f64>, usize) {
         let mut factor: f64 = 1.0;
         // the following is important to find the right coupling vector!
@@ -203,6 +201,7 @@ impl Simulation {
         (new_velocities, state)
     }
 
+    /// Obtain the new velocities utilizing a scaling procedure based on a Berendsen thermostat
     pub fn scale_velocities_temperature(&self) -> Array2<f64> {
         let curr_temperature: f64 =
             (23209.0 / (self.n_atoms as f64 * 3.0 - 6.0)) * self.kinetic_energy * 27.2114;
@@ -214,6 +213,7 @@ impl Simulation {
         new_velocities
     }
 
+    /// Rescaling of the velocities when using the energy conservation approach
     pub fn scale_velocities_const_energy(
         &self,
         old_state: usize,
@@ -239,6 +239,7 @@ impl Simulation {
     }
 }
 
+/// Normalize the state coefficients of the system
 pub fn normalize_coefficients(coefficients: ArrayView1<c64>) -> Array1<c64> {
     let mut norm: f64 = 0.0;
     let nstates: usize = coefficients.len();

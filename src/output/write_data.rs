@@ -23,6 +23,7 @@ pub struct StandardOutput {
     pub state: usize,
 }
 
+/// Struct that stores the standardized output of the dynamics simulation.
 impl StandardOutput {
     pub fn new(
         time: f64,
@@ -49,6 +50,8 @@ impl StandardOutput {
         }
     }
 }
+
+/// Struct that holds the geometric data of the system
 #[derive(Serialize, Deserialize, Clone)]
 pub struct XyzOutput {
     pub n_atoms: usize,
@@ -66,6 +69,7 @@ impl XyzOutput {
     }
 }
 
+/// Struct that stores the output of the surface hopping routines
 #[derive(Serialize, Deserialize, Clone)]
 pub struct HoppingOutput {
     pub time: f64,
@@ -95,7 +99,7 @@ impl HoppingOutput {
     }
 }
 
-// TODO: save nonadiabatic couplings
+/// Struct that stores the parameters, which are necessary to restart the dynamics simulation
 #[derive(Serialize, Deserialize, Clone)]
 pub struct RestartOutput {
     pub n_atoms: usize,
@@ -123,6 +127,8 @@ impl RestartOutput {
     }
 }
 
+/// Write the output of the struct [StandardOutput] to the file "dynamics.out" in the
+/// yaml file format.
 pub fn write_full(standard: &StandardOutput) {
     let file_path: &Path = Path::new("dynamics.out");
     let full: String = serde_yaml::to_string(standard).unwrap();
@@ -131,12 +137,13 @@ pub fn write_full(standard: &StandardOutput) {
         let mut stream = BufWriter::new(file);
         stream.write_fmt(format_args!("{}", full)).unwrap();
         stream.flush().unwrap();
-        // write!(&mut file,full);
     } else {
         fs::write(file_path, full).expect("Unable to write to dynamics.out file");
     }
 }
 
+/// Print the output from the struct [StandardOutput] to the file "dynamics.out" in
+/// a custom format.
 pub fn write_full_custom(standard: &StandardOutput, masses: ArrayView1<f64>) {
     let mut string: String = String::from("######################################\n");
     string.push_str(&String::from("time: "));
@@ -197,6 +204,8 @@ pub fn write_full_custom(standard: &StandardOutput, masses: ArrayView1<f64>) {
     }
 }
 
+/// Write the geometric data of the System from the struct [XyzOutput] to the file
+/// "dynamics.xyz" in the yaml file format.
 pub fn write_xyz(xyz: &XyzOutput) {
     let file_path: &Path = Path::new("dynamics.xyz");
     let xyz: String = serde_yaml::to_string(xyz).unwrap();
@@ -209,6 +218,9 @@ pub fn write_xyz(xyz: &XyzOutput) {
         fs::write(file_path, xyz).expect("Unable to write to dynamics.xyz file");
     }
 }
+
+/// Print the geometric data of the system from the struct [XyzOuput] to the file
+/// "dynamics.xyz" in a custom file format.
 pub fn write_xyz_custom(xyz: &XyzOutput) {
     let file_path: &Path = Path::new("dynamics.xyz");
     let mut string: String = xyz.n_atoms.to_string();
@@ -236,12 +248,16 @@ pub fn write_xyz_custom(xyz: &XyzOutput) {
     }
 }
 
+/// Print the restart parameters of the dynamics from the struct [RestartOutput] to the file "dynamics_restart.out"
+/// in the yaml file format.
 pub fn write_restart(restart: &RestartOutput) {
     let file_path: &Path = Path::new("dynamics_restart.out");
     let restart: String = serde_yaml::to_string(restart).unwrap();
     fs::write(file_path, restart).expect("Unable to write restart file");
 }
 
+/// Write the restart parametersd of the dynamics from the struct [RestartOutput] to the file "dynamics_restart.out"
+/// in a custom file format.
 pub fn write_restart_custom(restart: &RestartOutput) {
     let mut string: String = restart.n_atoms.to_string();
     string.push('\n');
@@ -267,6 +283,8 @@ pub fn write_restart_custom(restart: &RestartOutput) {
     fs::write(file_path, string).expect("Unable to write restart file");
 }
 
+
+/// Print the parameters of the struct [HoppingOutput] to the file "hopping.dat".
 pub fn write_hopping(hopping_out: &HoppingOutput) {
     let file_path: &Path = Path::new("hopping.dat");
     let mut hopp: String = String::from("#############################\n");
@@ -281,6 +299,7 @@ pub fn write_hopping(hopping_out: &HoppingOutput) {
     }
 }
 
+/// Print the energies of the system to the file "energies.dat"
 pub fn write_energies(energies: ArrayView1<f64>) {
     let file_path: &Path = Path::new("energies.dat");
     let mut string: String = String::from("");
@@ -307,6 +326,7 @@ pub fn write_energies(energies: ArrayView1<f64>) {
     }
 }
 
+/// Print the electronic state of the molecular system to the file "state.dat"
 pub fn write_state(electronic_state: usize) {
     let file_path: &Path = Path::new("state.dat");
     let mut string: String = electronic_state.to_string();

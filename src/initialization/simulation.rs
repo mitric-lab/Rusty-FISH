@@ -5,6 +5,8 @@ use crate::initialization::DynamicConfiguration;
 use ndarray::prelude::*;
 use ndarray_linalg::c64;
 
+/// Struct that holds the [DynamicConfiguration] and the other necessary
+/// arguments, which are required for the molecular dynamics
 pub struct Simulation {
     pub stepsize: f64,
     pub actual_step: f64,
@@ -37,6 +39,8 @@ pub struct Simulation {
 }
 
 impl Simulation {
+    /// Initialize the struct [Simulation] from the [SystemData]
+    /// Create all required arrays and initialize the velocities
     pub fn new(system: &SystemData) -> Simulation {
         let config: DynamicConfiguration = system.config.clone();
         let stepsize_au: f64 = config.stepsize * constants::FS_TO_AU;

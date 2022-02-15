@@ -120,6 +120,8 @@ fn default_pulse_config() -> PulseConfiguration {
     return pulse_config;
 }
 
+/// Struct that loads the configuration of the dynamics from the file "fish.toml"
+/// It holds the structs [HoppingConfiguration] and  [PulseConfigration]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct DynamicConfiguration {
     #[serde(default = "default_verbose")]
@@ -162,7 +164,7 @@ pub struct DynamicConfiguration {
 
 impl DynamicConfiguration {
     pub fn new() -> Self {
-        // read tincr configuration file, if it does not exist in the directory
+        // read the configuration file, if it does not exist in the directory
         // the program initializes the default settings and writes an configuration file
         // to the directory
         let config_file_path: &Path = Path::new(CONFIG_FILE_NAME);
@@ -182,6 +184,7 @@ impl DynamicConfiguration {
     }
 }
 
+/// Structs that holds the parameters for the surface hopping routines
 #[derive(Serialize, Deserialize, Clone)]
 pub struct HoppingConfiguration {
     #[serde(default = "default_coupling")]
@@ -202,6 +205,8 @@ pub struct HoppingConfiguration {
     pub start_econst: f64,
 }
 
+/// Struct that hold the parameters for the interaction of the molecular
+/// system with a guassian laser pulse
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PulseConfiguration {
     #[serde(default = "default_rotational_averaging")]
@@ -247,8 +252,5 @@ pub fn frame_to_coordinates(frame: Frame) -> (Vec<u8>, Array2<f64>) {
         .map(|i| frame.atom(i as usize).atomic_number() as u8)
         .collect();
 
-    // let mut smiles_repr: Trajectory = Trajectory::memory_writer("SMI").unwrap();
-    // smiles_repr.write(&mut frame).unwrap();
-    // let smiles: String = smiles_repr.memory_buffer().unwrap().replace('~', "").replace('\n', "");
     return (atomic_numbers, positions);
 }

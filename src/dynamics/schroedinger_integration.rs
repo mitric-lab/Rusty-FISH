@@ -5,15 +5,18 @@ use ndarray::{Array, Array1, Array2, ArrayView1, ArrayView2, Axis};
 use ndarray_linalg::{c64, Eig, Eigh, Inverse, UPLO};
 
 impl Simulation {
-    pub fn get_hopping_fortran(&self) -> Array1<c64> {
-        // Initialization
+    /// Obtain the new coefficients of the states by utilizing a Runge-Kutta 4th order scheme
+    pub fn new_coefficients(&self) -> Array1<c64> {
+        // get the nonadiabatic scalar couplings
         let old_nonadiabatic_scalar: Array2<f64> = -1.0 * &self.nonadiabatic_scalar_old;
         let nonadiabatic_scalar: Array2<f64> = -1.0 * &self.nonadiabatic_scalar;
 
+        // set the stepsize of the RK-integration
         let n_delta: usize = self.config.hopping_config.integration_steps;
         let delta_rk: f64 = self.stepsize / n_delta as f64;
         let coupling_flag: i8 = self.config.hopping_config.coupling_flag;
 
+        // calculate the nonadiabatic slope
         let mut nonadibatic_slope: Array2<f64> = Array2::zeros(nonadiabatic_scalar.raw_dim());
         if coupling_flag == 1 || coupling_flag == 2 {
             for i in 0..self.config.nstates {
@@ -25,7 +28,7 @@ impl Simulation {
             }
         }
 
-        // Get the electric field of the pulse
+        // Get the electric field of the laser pulse
         let mut electric_field: Array1<f64> = Array1::zeros(4 * n_delta);
         if coupling_flag == 0 || coupling_flag == 2 {
             electric_field = get_analytic_field(
@@ -36,15 +39,14 @@ impl Simulation {
             );
         }
 
-        // Integration
+        // start the Runge-Kutta integration
         let t_start: f64 = delta_rk * self.actual_step;
         let mut old_coefficients: Array1<c64> = self.coefficients.clone();
-
         for i in 0..n_delta {
             let t_i: f64 = i as f64 * delta_rk;
             let _t_abs: f64 = t_start + t_i;
 
-            // do runge kutta
+            // do one step of the integration
             let new_coefficients: Array1<c64> = self.runge_kutta_integration(
                 i + 1,
                 t_i,
@@ -55,6 +57,7 @@ impl Simulation {
             );
             old_coefficients = new_coefficients;
         }
+        // calulate the new coefficients
         let time: f64 = delta_rk * n_delta as f64;
         let energy_compl: Array1<c64> = self
             .energies
@@ -64,10 +67,10 @@ impl Simulation {
         c_new
     }
 
-    // The coefficients of the electronic wavefunction are propagated
-    // in the local diabatic basis as explained in
-    // [1]  JCP 114, 10608 (2001) and
-    // [2]  JCP 137, 22A514 (2012)
+    /// The coefficients of the electronic wavefunction are propagated
+    /// in the local diabatic basis as explained in
+    /// [1]  JCP 114, 10608 (2001) and
+    /// [2]  JCP 137, 22A514 (2012)
     pub fn get_local_diabatization(
         &self,
         energy_last: ArrayView1<f64>,
@@ -75,7 +78,6 @@ impl Simulation {
     ) -> (Array1<c64>, Array2<f64>, Array2<f64>) {
         // Loewding orthogonalization of the S matrix
         // see eqns. (B5) and (B6) in [2]
-
         let s_ts: Array2<f64> = self.s_mat.t().dot(&self.s_mat);
         let (l, o): (Array1<f64>, Array2<f64>) = s_ts.eigh(UPLO::Upper).unwrap();
         let lm12: Array1<f64> = (1.0 / l).mapv(|val| val.sqrt());
@@ -137,6 +139,7 @@ impl Simulation {
         (c_1, h_diab, ttot_last)
     }
 
+    /// Calculate one step of the 4th order Runge-Kutta method
     pub fn runge_kutta_integration(
         &self,
         iterator: usize,
@@ -184,6 +187,7 @@ impl Simulation {
         new_coefficients
     }
 
+    /// Calculate a coeffiecient k of the runge kutta method
     fn runge_kutta_helper(
         &self,
         time: f64,
@@ -231,14 +235,14 @@ impl Simulation {
         let mut incr: Array2<f64> = Array2::zeros((nstates, nstates));
         incr = incr + non_adiabatic;
         let incr_complex = field_coupling.mapv(|val| c64::new(0.0, -1.0) * val) + incr;
-        // let h:Array2<c64> = dE * non_adiabatic;
         let h: Array2<c64> = de * incr_complex;
-        let f_new: Array1<c64> = h.dot(&coefficients); //.mapv(|val| val *c64::new(0.0,-1.0));
+        let f_new: Array1<c64> = h.dot(&coefficients);
 
         f_new
     }
 }
 
+/// Obtain the nonadiabatic coupling for a integration step of the RK method
 fn get_nonadiabatic_coupling(
     time: f64,
     nonadiabatic_slope: ArrayView2<f64>,
@@ -255,6 +259,7 @@ fn get_nonadiabatic_coupling(
     nonadiabatic
 }
 
+/// Obtain the coupling of the electric field for a integration step of the RK method
 fn get_field_coupling(
     dipole: ArrayView3<f64>,
     n: usize,
@@ -265,6 +270,7 @@ fn get_field_coupling(
     let mut coupling: Array2<f64> = Array2::zeros((nstates, nstates));
     let efield_index: usize = n - 1;
 
+    // use the rotationally averaged field coupling
     if rot_avg {
         for i in 0..nstates {
             for j in 0..nstates {
@@ -274,7 +280,9 @@ fn get_field_coupling(
             }
         }
         coupling = coupling * (-1.0 / (3.0_f64.sqrt())) * efield[efield_index];
-    } else {
+    }
+    // use a fixed field polarization
+    else {
         let evec: Array1<f64> = (-1.0 / 3.0_f64.sqrt()) * Array1::ones(3);
         let evec_normalized = &evec / (evec.dot(&evec)).sqrt();
 
@@ -290,6 +298,9 @@ fn get_field_coupling(
     coupling
 }
 
+/// Obtain the electric field of the laser pulse given by the parameters of the [PulseConfiguration].
+/// Calculate the laser pulse using the equation
+/// E = E_0 * cos(ω (t-t0)) * exp(-α (t-t0)^2)
 fn get_analytic_field(
     config: &PulseConfiguration,
     nstep: usize,

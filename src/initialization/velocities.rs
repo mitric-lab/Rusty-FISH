@@ -3,12 +3,13 @@ use crate::initialization::SystemData;
 use ndarray::Array2;
 use rand_distr::{Distribution, Normal};
 
-/// Initialize the velocities from a Boltzmann distribution.
+/// Struct that holds a Boltzmann distribution
 pub struct BoltzmannVelocities {
     dist: Normal<f64>,
 }
 
 impl BoltzmannVelocities {
+    /// Initialize the distribution from a given temperature
     pub fn new(temperature: f64) -> BoltzmannVelocities {
         let dist = Normal::new(0.0, f64::sqrt(constants::K_BOLTZMANN * temperature))
             .expect("Error regarding the distribution!");
@@ -16,6 +17,8 @@ impl BoltzmannVelocities {
     }
 }
 
+/// Initialize the velocities of the system using the struct [BoltzmannVelocities]
+/// by sampling the distribution
 pub fn initialize_velocities(system: &SystemData, temperature: f64) -> Array2<f64> {
     let boltzmann: BoltzmannVelocities = BoltzmannVelocities::new(temperature);
     let mut velocities: Array2<f64> = Array2::zeros(system.coordinates.raw_dim());

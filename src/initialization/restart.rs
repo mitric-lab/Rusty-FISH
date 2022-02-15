@@ -6,7 +6,7 @@ use serde_yaml;
 use std::fs;
 use std::path::Path;
 
-// Read restart parameters from a file
+/// Load the necessary parameters from the restart file
 pub fn read_restart_parameters() -> (Array2<f64>, Array2<f64>, Array3<f64>, Array1<c64>) {
     let restart_file_path: &Path = Path::new(defaults::RESTART_FILE_NAME);
     // check if file exists

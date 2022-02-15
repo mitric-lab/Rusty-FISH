@@ -8,6 +8,7 @@ use ndarray::prelude::*;
 use ndarray_linalg::c64;
 
 impl Simulation {
+    /// Initialize the velocity-verlet dynamic routine and print the first output of the dynamics simulation
     pub fn initialize_verlet(&mut self, interface: &mut dyn QuantumChemistryInterface) {
         if self.config.inputflag == "new" {
             self.initiate_trajectory(interface);
@@ -54,6 +55,8 @@ impl Simulation {
         self.coordinates = self.shift_to_center_of_mass();
     }
 
+    /// Calculate a single step of the velocity-verlet dynamics utilizing the [QuantumChemistryInterface]
+    /// for the calculation of the required properties
     pub fn verlet_step(&mut self, interface: &mut dyn QuantumChemistryInterface) {
         let old_forces: Array2<f64> = self.forces.clone();
         let old_energy: f64 = self.energies[self.state] + self.kinetic_energy;
@@ -75,7 +78,7 @@ impl Simulation {
                 // integration of the schroedinger equation
                 // employing a runge-kutta scheme
                 if self.config.hopping_config.integration_type == "RK" {
-                    self.coefficients = self.get_hopping_fortran();
+                    self.coefficients = self.new_coefficients();
                 } else if self.config.hopping_config.integration_type == "LD" {
                     let tmp: (Array1<c64>, Array2<f64>, Array2<f64>) =
                         self.get_local_diabatization(last_energies.view(), self.t_tot_last.clone());
@@ -88,13 +91,12 @@ impl Simulation {
                         // coefficients are integrated in the local diabatic basis.
                         // The diabatization procedure requires the overlap matrix
                         // between wavefunctions at different time steps.
-                        // let s_mat: Array2<f64> = self.s_mat.clone().unwrap();
                         let tmp: (Array1<c64>, Array2<f64>, Array2<f64>) = self
                             .get_local_diabatization(last_energies.view(), self.t_tot_last.clone());
                         self.coefficients = tmp.0;
                         self.t_tot_last = Some(tmp.2);
                     } else {
-                        self.coefficients = self.get_hopping_fortran();
+                        self.coefficients = self.new_coefficients();
                     }
                 }
                 // calculate the state of the simulation after the hopping procedure
@@ -195,6 +197,7 @@ impl Simulation {
         self.actual_time += self.stepsize;
     }
 
+    /// Initialize the langevin dynamics and write the first output of the simulation
     pub fn initialize_langevin(&mut self, interface: &mut dyn QuantumChemistryInterface) {
         if self.config.inputflag == "new" {
             self.initiate_trajectory(interface);
@@ -251,6 +254,7 @@ impl Simulation {
         self.coordinates = self.shift_to_center_of_mass();
     }
 
+    /// Calculate a single step of the langevin dynamics
     pub fn langevin_step(&mut self, interface: &mut dyn QuantumChemistryInterface) {
         let econst: f64 = self.config.hopping_config.start_econst * constants::FS_TO_AU;
         let old_forces: Array2<f64> = self.forces.clone();
@@ -270,7 +274,7 @@ impl Simulation {
                 // integration of the schroedinger equation
                 // employing a runge-kutta scheme
                 if self.config.hopping_config.integration_type == "RK" {
-                    self.coefficients = self.get_hopping_fortran();
+                    self.coefficients = self.new_coefficients();
                 } else if self.config.hopping_config.integration_type == "LD" {
                     let tmp: (Array1<c64>, Array2<f64>, Array2<f64>) =
                         self.get_local_diabatization(last_energies.view(), self.t_tot_last.clone());
@@ -289,7 +293,7 @@ impl Simulation {
                         self.coefficients = tmp.0;
                         self.t_tot_last = Some(tmp.2);
                     } else {
-                        self.coefficients = self.get_hopping_fortran();
+                        self.coefficients = self.new_coefficients();
                     }
                 }
                 // calculate the state of the simulation after the hopping procedure
@@ -384,6 +388,8 @@ impl Simulation {
         self.actual_time += self.stepsize;
     }
 
+    /// Do the first calculation of the energies, gradient, nonadiabatic couplings and the dipoles
+    /// using the [QuantumChemistryInterface]
     pub fn initialize_quantum_chem_interface(
         &mut self,
         interface: &mut dyn QuantumChemistryInterface,
@@ -421,6 +427,8 @@ impl Simulation {
         self.s_mat = self.nonadiabatic_scalar.clone() * self.stepsize;
     }
 
+    /// Calculate the energies, gradient, nonadiabatic couplings and the dipoles
+    /// using the [QuantumChemistryInterface]
     pub fn get_quantum_chem_data(&mut self, interface: &mut dyn QuantumChemistryInterface) {
         // calculate energy, forces, etc for new coords
         // let mut handler: Bagel_Handler = self.handler.clone().unwrap();
@@ -462,6 +470,7 @@ impl Simulation {
         self.s_mat = self.nonadiabatic_scalar.clone() * self.stepsize;
     }
 
+    /// Initiate the trajectory
     pub fn initiate_trajectory(&mut self, interface: &mut dyn QuantumChemistryInterface) {
         self.coordinates = self.shift_to_center_of_mass();
         self.velocities = self.eliminate_translation_rotation_from_velocity();
@@ -471,6 +480,7 @@ impl Simulation {
         self.kinetic_energy = self.get_kinetic_energy();
     }
 
+    /// Restart the trajectory
     pub fn restart_trajectory(&mut self, interface: &mut dyn QuantumChemistryInterface) {
         let temp: (Array2<f64>, Array2<f64>, Array3<f64>, Array1<c64>) = read_restart_parameters();
         self.coordinates = temp.0;
@@ -478,12 +488,8 @@ impl Simulation {
         self.nonadiabatic_arr_old = temp.2;
         self.coefficients = temp.3;
 
-        // self.coordinates = self.shift_to_center_of_mass();
-        // self.velocities = self.eliminate_translation_rotation_from_velocity();
-
         // calculate quantum chemical data
         self.get_quantum_chem_data(interface);
-
         self.kinetic_energy = self.get_kinetic_energy();
     }
 }
