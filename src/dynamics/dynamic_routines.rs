@@ -282,7 +282,7 @@ pub fn eliminate_rotation(
     for index in 0..coordinates.dim().0 {
         new_velocities.slice_mut(s![index, ..]).assign(
             &(&velocities.slice(s![index, ..])
-                - &my_cross_product(omega, coordinates.slice(s![index, ..]))),
+                - &cross_product(omega, coordinates.slice(s![index, ..]))),
         );
     }
     new_velocities
