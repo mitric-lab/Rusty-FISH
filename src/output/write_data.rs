@@ -10,6 +10,7 @@ use std::io::{BufWriter, Write};
 use std::path::Path;
 use toml;
 
+/// Struct that stores the standardized output of the dynamics simulation.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct StandardOutput {
     pub time: f64,
@@ -23,7 +24,6 @@ pub struct StandardOutput {
     pub state: usize,
 }
 
-/// Struct that stores the standardized output of the dynamics simulation.
 impl StandardOutput {
     pub fn new(
         time: f64,
