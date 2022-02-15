@@ -5,7 +5,7 @@ use ndarray::{Array, Array1, Array2, ArrayView1, ArrayView2, Axis};
 use ndarray_linalg::{c64, Eig, Eigh, Inverse, UPLO};
 
 impl Simulation {
-    pub fn get_hopping_fortran(&self, actual_step: f64) -> Array1<c64> {
+    pub fn get_hopping_fortran(&self) -> Array1<c64> {
         // Initialization
         let old_nonadiabatic_scalar: Array2<f64> = -1.0 * &self.nonadiabatic_scalar_old;
         let nonadiabatic_scalar: Array2<f64> = -1.0 * &self.nonadiabatic_scalar;
@@ -32,12 +32,12 @@ impl Simulation {
                 &self.config.pulse_config,
                 4 * n_delta,
                 delta_rk,
-                actual_step,
+                self.actual_step,
             );
         }
 
         // Integration
-        let t_start: f64 = delta_rk * actual_step;
+        let t_start: f64 = delta_rk * self.actual_step;
         let mut old_coefficients: Array1<c64> = self.coefficients.clone();
 
         for i in 0..n_delta {
@@ -45,21 +45,12 @@ impl Simulation {
             let _t_abs: f64 = t_start + t_i;
 
             // do runge kutta
-            let new_coefficients: Array1<c64> = runge_kutta_integration(
+            let new_coefficients: Array1<c64> = self.runge_kutta_integration(
                 i + 1,
                 t_i,
                 old_coefficients.view(),
-                self.energies.view(),
-                actual_step,
-                self.config.nstates,
-                self.state,
-                n_delta,
                 delta_rk,
-                self.dipole.view(),
-                old_nonadiabatic_scalar.view(),
                 nonadibatic_slope.view(),
-                coupling_flag,
-                self.config.pulse_config.rotational_averaging,
                 electric_field.view(),
             );
             old_coefficients = new_coefficients;
@@ -145,148 +136,107 @@ impl Simulation {
 
         (c_1, h_diab, ttot_last)
     }
-}
 
-pub fn runge_kutta_integration(
-    iterator: usize,
-    time: f64,
-    coefficients: ArrayView1<c64>,
-    energy: ArrayView1<f64>,
-    _actual_step: f64,
-    nstates: usize,
-    actual_state: usize,
-    n_delta: usize,
-    delta_rk: f64,
-    dipole: ArrayView3<f64>,
-    old_nonadiabatic_scalar: ArrayView2<f64>,
-    nonadiabatic_slope: ArrayView2<f64>,
-    coupling_flag: i8,
-    rot_avg: bool,
-    efield: ArrayView1<f64>,
-) -> Array1<c64> {
-    let n: usize = 4 * iterator - 3;
-    let mut k_1: Array1<c64> = runge_kutta_helper(
-        time,
-        coefficients,
-        energy,
-        nstates,
-        actual_state,
-        n_delta,
-        n,
-        dipole,
-        old_nonadiabatic_scalar,
-        nonadiabatic_slope,
-        coupling_flag,
-        rot_avg,
-        efield,
-    );
-    k_1 = k_1 * delta_rk;
-    let tmp: Array1<c64> = &coefficients + &(&k_1 * 0.5);
+    pub fn runge_kutta_integration(
+        &self,
+        iterator: usize,
+        time: f64,
+        coefficients: ArrayView1<c64>,
+        delta_rk: f64,
+        nonadiabatic_slope: ArrayView2<f64>,
+        efield: ArrayView1<f64>,
+    ) -> Array1<c64> {
+        let n: usize = 4 * iterator - 3;
+        let mut k_1: Array1<c64> =
+            self.runge_kutta_helper(time, coefficients, n, nonadiabatic_slope, efield);
+        k_1 = k_1 * delta_rk;
+        let tmp: Array1<c64> = &coefficients + &(&k_1 * 0.5);
 
-    let n: usize = 4 * iterator - 2;
-    let mut k_2: Array1<c64> = runge_kutta_helper(
-        time + 0.5 * delta_rk,
-        tmp.view(),
-        energy,
-        nstates,
-        actual_state,
-        n_delta,
-        n,
-        dipole,
-        old_nonadiabatic_scalar,
-        nonadiabatic_slope,
-        coupling_flag,
-        rot_avg,
-        efield,
-    );
-    k_2 = k_2 * delta_rk;
-    let tmp: Array1<c64> = &coefficients + &(&k_2 * 0.5);
+        let n: usize = 4 * iterator - 2;
+        let mut k_2: Array1<c64> = self.runge_kutta_helper(
+            time + 0.5 * delta_rk,
+            tmp.view(),
+            n,
+            nonadiabatic_slope,
+            efield,
+        );
+        k_2 = k_2 * delta_rk;
+        let tmp: Array1<c64> = &coefficients + &(&k_2 * 0.5);
 
-    let n: usize = 4 * iterator - 1;
-    let mut k_3: Array1<c64> = runge_kutta_helper(
-        time + 0.5 * delta_rk,
-        tmp.view(),
-        energy,
-        nstates,
-        actual_state,
-        n_delta,
-        n,
-        dipole,
-        old_nonadiabatic_scalar,
-        nonadiabatic_slope,
-        coupling_flag,
-        rot_avg,
-        efield,
-    );
-    k_3 = k_3 * delta_rk;
-    let tmp: Array1<c64> = &coefficients + &(&k_3 * 0.5);
+        let n: usize = 4 * iterator - 1;
+        let mut k_3: Array1<c64> = self.runge_kutta_helper(
+            time + 0.5 * delta_rk,
+            tmp.view(),
+            n,
+            nonadiabatic_slope,
+            efield,
+        );
+        k_3 = k_3 * delta_rk;
+        let tmp: Array1<c64> = &coefficients + &(&k_3 * 0.5);
 
-    let n: usize = 4 * iterator;
-    let mut k_4: Array1<c64> = runge_kutta_helper(
-        time + delta_rk,
-        tmp.view(),
-        energy,
-        nstates,
-        actual_state,
-        n_delta,
-        n,
-        dipole,
-        old_nonadiabatic_scalar,
-        nonadiabatic_slope,
-        coupling_flag,
-        rot_avg,
-        efield,
-    );
-    k_4 = k_4 * delta_rk;
+        let n: usize = 4 * iterator;
+        let mut k_4: Array1<c64> =
+            self.runge_kutta_helper(time + delta_rk, tmp.view(), n, nonadiabatic_slope, efield);
+        k_4 = k_4 * delta_rk;
 
-    let new_coefficients: Array1<c64> =
-        &coefficients + &((k_1 + k_2 * 2.0 + k_3 * 2.0 + k_4) * 1.0 / 6.0);
-    new_coefficients
-}
-
-fn runge_kutta_helper(
-    time: f64,
-    coefficients: ArrayView1<c64>,
-    energy: ArrayView1<f64>,
-    nstates: usize,
-    _actual_state: usize,
-    _n_delta: usize,
-    n: usize,
-    dipole: ArrayView3<f64>,
-    old_nonadiabatic_scalar: ArrayView2<f64>,
-    nonadiabatic_slope: ArrayView2<f64>,
-    coupling_flag: i8,
-    rot_avg: bool,
-    efield: ArrayView1<f64>,
-) -> Array1<c64> {
-    let _f: Array1<c64> = Array1::zeros(coefficients.raw_dim());
-    let mut non_adiabatic: Array2<f64> = Array2::zeros(nonadiabatic_slope.raw_dim());
-    let mut field_coupling: Array2<f64> = Array2::zeros(nonadiabatic_slope.raw_dim());
-
-    // coupling_flag =0: field coupling only; 1: nonadiabatic coupling only; 2: both
-    if coupling_flag == 0 || coupling_flag == 2 {
-        field_coupling = get_field_coupling(dipole, n, nstates, efield, rot_avg);
+        let new_coefficients: Array1<c64> =
+            &coefficients + &((k_1 + k_2 * 2.0 + k_3 * 2.0 + k_4) * 1.0 / 6.0);
+        new_coefficients
     }
 
-    if coupling_flag == 1 || coupling_flag == 2 {
-        non_adiabatic =
-            get_nonadiabatic_coupling(time, nonadiabatic_slope, old_nonadiabatic_scalar, nstates);
+    fn runge_kutta_helper(
+        &self,
+        time: f64,
+        coefficients: ArrayView1<c64>,
+        n: usize,
+        nonadiabatic_slope: ArrayView2<f64>,
+        efield: ArrayView1<f64>,
+    ) -> Array1<c64> {
+        let _f: Array1<c64> = Array1::zeros(coefficients.raw_dim());
+        let mut non_adiabatic: Array2<f64> = Array2::zeros(nonadiabatic_slope.raw_dim());
+        let mut field_coupling: Array2<f64> = Array2::zeros(nonadiabatic_slope.raw_dim());
+        let nstates: usize = self.config.nstates;
+
+        // coupling_flag =0: field coupling only; 1: nonadiabatic coupling only; 2: both
+        if self.config.hopping_config.coupling_flag == 0
+            || self.config.hopping_config.coupling_flag == 2
+        {
+            field_coupling = get_field_coupling(
+                self.dipole.view(),
+                n,
+                self.config.nstates,
+                efield,
+                self.config.pulse_config.rotational_averaging,
+            );
+        }
+
+        if self.config.hopping_config.coupling_flag == 1
+            || self.config.hopping_config.coupling_flag == 2
+        {
+            let old_nonadiabatic_scalar: Array2<f64> = -1.0 * &self.nonadiabatic_scalar_old;
+            non_adiabatic = get_nonadiabatic_coupling(
+                time,
+                nonadiabatic_slope,
+                old_nonadiabatic_scalar.view(),
+                nstates,
+            );
+        }
+        // create energy difference array
+        let energy_arr_tmp: Array2<f64> = self.energies.clone().insert_axis(Axis(1));
+        let mesh_1: ArrayView2<f64> = energy_arr_tmp.broadcast((nstates, nstates)).unwrap();
+        let energy_difference: Array2<f64> = &mesh_1.clone() - &mesh_1.t();
+
+        // alternative way instead of iteration
+        let de: Array2<c64> = energy_difference.mapv(|val| (c64::new(0.0, 1.0) * val * time).exp());
+        let mut incr: Array2<f64> = Array2::zeros((nstates, nstates));
+        incr = incr + non_adiabatic;
+        let incr_complex = field_coupling.mapv(|val| c64::new(0.0, -1.0) * val) + incr;
+        // let h:Array2<c64> = dE * non_adiabatic;
+        let h: Array2<c64> = de * incr_complex;
+        let f_new: Array1<c64> = h.dot(&coefficients); //.mapv(|val| val *c64::new(0.0,-1.0));
+
+        f_new
     }
-    // create energy difference array
-    let energy_arr_tmp: Array2<f64> = energy.to_owned().insert_axis(Axis(1));
-    let mesh_1: ArrayView2<f64> = energy_arr_tmp.broadcast((nstates, nstates)).unwrap();
-    let energy_difference: Array2<f64> = &mesh_1.clone() - &mesh_1.t();
-
-    // alternative way instead of iteration
-    let de: Array2<c64> = energy_difference.mapv(|val| (c64::new(0.0, 1.0) * val * time).exp());
-    let mut incr: Array2<f64> = Array2::zeros((nstates, nstates));
-    incr = incr + non_adiabatic;
-    let incr_complex = field_coupling.mapv(|val| c64::new(0.0, -1.0) * val) + incr;
-    // let h:Array2<c64> = dE * non_adiabatic;
-    let h: Array2<c64> = de * incr_complex;
-    let f_new: Array1<c64> = h.dot(&coefficients); //.mapv(|val| val *c64::new(0.0,-1.0));
-
-    f_new
 }
 
 fn get_nonadiabatic_coupling(

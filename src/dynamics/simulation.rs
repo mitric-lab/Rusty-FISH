@@ -75,7 +75,7 @@ impl Simulation {
                 // integration of the schroedinger equation
                 // employing a runge-kutta scheme
                 if self.config.hopping_config.integration_type == "RK" {
-                    self.coefficients = self.get_hopping_fortran(self.actual_step);
+                    self.coefficients = self.get_hopping_fortran();
                 } else if self.config.hopping_config.integration_type == "LD" {
                     let tmp: (Array1<c64>, Array2<f64>, Array2<f64>) =
                         self.get_local_diabatization(last_energies.view(), self.t_tot_last.clone());
@@ -94,7 +94,7 @@ impl Simulation {
                         self.coefficients = tmp.0;
                         self.t_tot_last = Some(tmp.2);
                     } else {
-                        self.coefficients = self.get_hopping_fortran(self.actual_step);
+                        self.coefficients = self.get_hopping_fortran();
                     }
                 }
                 // calculate the state of the simulation after the hopping procedure
@@ -270,7 +270,7 @@ impl Simulation {
                 // integration of the schroedinger equation
                 // employing a runge-kutta scheme
                 if self.config.hopping_config.integration_type == "RK" {
-                    self.coefficients = self.get_hopping_fortran(self.actual_step);
+                    self.coefficients = self.get_hopping_fortran();
                 } else if self.config.hopping_config.integration_type == "LD" {
                     let tmp: (Array1<c64>, Array2<f64>, Array2<f64>) =
                         self.get_local_diabatization(last_energies.view(), self.t_tot_last.clone());
@@ -289,7 +289,7 @@ impl Simulation {
                         self.coefficients = tmp.0;
                         self.t_tot_last = Some(tmp.2);
                     } else {
-                        self.coefficients = self.get_hopping_fortran(self.actual_step);
+                        self.coefficients = self.get_hopping_fortran();
                     }
                 }
                 // calculate the state of the simulation after the hopping procedure
