@@ -87,8 +87,9 @@ fn main() {
 
     // Generate system
     let system: SystemData = SystemData::from((frame, config));
-    // Initialize dynamics
+    // Initialize handler
     let mut handler:Bagel_Handler = Bagel_Handler::from(&system);
+    // Initialize dynamics
     let mut dynamic: Simulation = Simulation::new(&system,&mut handler);
     dynamic.verlet_dynamics();
 }
