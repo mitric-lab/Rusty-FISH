@@ -201,17 +201,17 @@ impl Simulation {
         (new_velocities, state)
     }
 
-    /// Obtain the new velocities utilizing a scaling procedure based on a Berendsen thermostat
-    pub fn scale_velocities_temperature(&self) -> Array2<f64> {
-        let curr_temperature: f64 =
-            (23209.0 / (self.n_atoms as f64 * 3.0 - 6.0)) * self.kinetic_energy * 27.2114;
-        let scaling_factor: f64 = (1.0
-            + (self.stepsize / self.time_coupling)
-                * (self.config.temperature / curr_temperature - 1.0))
-            .sqrt();
-        let new_velocities: Array2<f64> = scaling_factor * &self.velocities;
-        new_velocities
-    }
+    // /// Obtain the new velocities utilizing a scaling procedure based on a Berendsen thermostat
+    // pub fn scale_velocities_temperature(&self) -> Array2<f64> {
+    // let curr_temperature: f64 =
+    // (23209.0 / (self.n_atoms as f64 * 3.0 - 6.0)) * self.kinetic_energy * 27.2114;
+    // let scaling_factor: f64 = (1.0
+    // + (self.stepsize / self.time_coupling)
+    // * (self.config.temperature / curr_temperature - 1.0))
+    // .sqrt();
+    // let new_velocities: Array2<f64> = scaling_factor * &self.velocities;
+    // new_velocities
+    // }
 
     /// Rescaling of the velocities when using the energy conservation approach
     pub fn scale_velocities_const_energy(

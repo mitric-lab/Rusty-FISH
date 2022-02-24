@@ -1,4 +1,5 @@
 use crate::constants;
+use crate::dynamics::thermostat::BerendsenThermostat;
 use crate::initialization::system::SystemData;
 use crate::initialization::velocities::*;
 use crate::initialization::DynamicConfiguration;
@@ -32,10 +33,10 @@ pub struct Simulation {
     pub dipole: Array3<f64>,
     pub dipole_old: Array3<f64>,
     pub state: usize,
-    pub time_coupling: f64,
     pub saved_p_rand: Array2<f64>,
     pub saved_efactor: Array1<f64>,
     pub t_tot_last: Option<Array2<f64>>,
+    pub thermostat: BerendsenThermostat,
 }
 
 impl Simulation {
@@ -75,13 +76,19 @@ impl Simulation {
             // TODO: read from file
         }
 
+        let thermostat: BerendsenThermostat = BerendsenThermostat::new(
+            config.time_coupling * constants::FS_TO_AU,
+            stepsize_au,
+            system.n_atoms,
+            config.temperature,
+        );
+
         Simulation {
             state: config.initial_state,
             actual_step: 0.0,
             actual_time: 0.0,
             stepsize: stepsize_au,
             total_mass,
-            time_coupling: config.time_coupling * constants::FS_TO_AU,
             config,
             coefficients,
             coordinates: system.coordinates.clone(),
@@ -104,6 +111,7 @@ impl Simulation {
             saved_efactor: efactor,
             saved_p_rand,
             t_tot_last: None,
+            thermostat,
         }
     }
 }
