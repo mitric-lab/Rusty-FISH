@@ -15,9 +15,6 @@ use std::path::Path;
 use std::ptr::eq;
 use std::{env, fs};
 
-fn default_charge() -> i8 {
-    CHARGE
-}
 fn default_verbose() -> i8 {
     VERBOSE
 }
@@ -39,8 +36,8 @@ fn default_temperature() -> f64 {
 fn default_friction() -> f64 {
     FRICTION
 }
-fn default_inputflag() -> String {
-    INPUTFLAG.to_string()
+fn default_restart_flag() -> bool {
+    RESTARTFLAG
 }
 fn default_print_coupling() -> bool {
     PRINT_COUPLING
@@ -147,18 +144,14 @@ pub struct DynamicConfiguration {
     pub dyn_mode: char,
     #[serde(default = "default_friction")]
     pub friction: f64,
-    #[serde(default = "default_inputflag")]
-    pub inputflag: String,
+    #[serde(default = "default_restart_flag")]
+    pub restart_flag: bool,
     #[serde(default = "default_nuclear_propagation")]
     pub nuclear_propagation: char,
-    #[serde(default = "default_charge")]
-    pub charge: i8,
     #[serde(default = "default_initial_state")]
     pub initial_state: usize,
     #[serde(default = "default_nstates")]
     pub nstates: usize,
-    #[serde(default = "default_extrapolate_forces")]
-    pub extrapolate_forces: bool,
     #[serde(default = "default_gs_dynamic")]
     pub gs_dynamic: bool,
     #[serde(default = "default_velocity_generation")]

@@ -6,6 +6,22 @@ pub trait Thermostat {
     fn scale_velocities(&mut self, vel: ArrayView2<f64>, kinetic_energy: f64) -> Array2<f64>;
 }
 
+pub struct NullThermostat {
+    pub scaling: f64,
+}
+
+impl NullThermostat {
+    pub fn default() -> Self {
+        NullThermostat { scaling: 1.0 }
+    }
+}
+
+impl Thermostat for NullThermostat {
+    fn scale_velocities(&mut self, vel: ArrayView2<f64>, _kinetic_energy: f64) -> Array2<f64> {
+        self.scaling * &vel
+    }
+}
+
 pub struct BerendsenThermostat {
     pub tau: f64,
     pub dt: f64,

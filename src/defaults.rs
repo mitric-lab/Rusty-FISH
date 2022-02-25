@@ -2,8 +2,6 @@
 pub const CONFIG_FILE_NAME: &str = "fish.toml";
 // restart file
 pub const RESTART_FILE_NAME: &str = "dynamics_restart.out";
-// charge of the molecule in a.u.
-pub const CHARGE: i8 = 0;
 // spin multiplicity 2S + 1
 pub const MULTIPLICITY: u8 = 1;
 // print level
@@ -22,7 +20,7 @@ pub const TEMPERATURE: f64 = 300.0;
 // friction coefficient for ethylene glycol (in a.u.^-1)
 pub const FRICTION: f64 = 0.015585;
 // new trajectory: "new"  or restart dynamics: "restart"
-pub const INPUTFLAG: &str = "new";
+pub const RESTARTFLAG: bool = false;
 // write nonadiabatic couplings and transition dipole moments if available
 pub const PRINT_COUPLING: bool = false;
 // write information on coefficients and hopping: 0:

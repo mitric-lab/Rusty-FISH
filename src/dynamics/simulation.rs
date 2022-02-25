@@ -10,12 +10,10 @@ use ndarray_linalg::c64;
 impl Simulation {
     /// Initialize the velocity-verlet dynamic routine and print the first output of the dynamics simulation
     pub fn initialize_verlet(&mut self, interface: &mut dyn QuantumChemistryInterface) {
-        if self.config.inputflag == "new" {
-            self.initiate_trajectory(interface);
-        } else if self.config.inputflag == "restart" {
+        if self.config.restart_flag {
             self.restart_trajectory(interface);
         } else {
-            panic!("The inputflag must be either 'new' or 'restart'");
+            self.initiate_trajectory(interface);
         }
         let restart: RestartOutput = RestartOutput::new(
             self.n_atoms,
@@ -202,12 +200,10 @@ impl Simulation {
 
     /// Initialize the langevin dynamics and write the first output of the simulation
     pub fn initialize_langevin(&mut self, interface: &mut dyn QuantumChemistryInterface) {
-        if self.config.inputflag == "new" {
-            self.initiate_trajectory(interface);
-        } else if self.config.inputflag == "restart" {
+        if self.config.restart_flag {
             self.restart_trajectory(interface);
         } else {
-            panic!("The inputflag must be either 'new' or 'restart'");
+            self.initiate_trajectory(interface);
         }
 
         // Write initial output
