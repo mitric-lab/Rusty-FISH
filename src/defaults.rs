@@ -78,6 +78,9 @@ pub const GS_DYNAMIC: bool = true;
 pub const START_ECONST: f64 = 0.0;
 // Time coupling for the thermostat
 pub const TIME_COUPLING: f64 = 50.0;
+pub const THERMOSTAT_TYPE: &str = "Berendsen";
+pub const NH_STEPS: usize = 1;
+pub const NH_CHAIN_LENGTH: usize = 3;
 // velocity generation
 // 0 = velocities from boltzmann distribution
 // 1 = velocities as input

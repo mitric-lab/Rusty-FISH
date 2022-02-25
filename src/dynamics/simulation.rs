@@ -7,8 +7,6 @@ use crate::output::*;
 use ndarray::prelude::*;
 use ndarray_linalg::c64;
 
-use super::thermostat::Thermostat;
-
 impl Simulation {
     /// Initialize the velocity-verlet dynamic routine and print the first output of the dynamics simulation
     pub fn initialize_verlet(&mut self, interface: &mut dyn QuantumChemistryInterface) {

@@ -13,7 +13,8 @@ impl Simulation {
         let pterm: Array1<f64> = 2.0 * gdt - 3.0 + (4.0 - egdt.clone()) * &egdt;
         let vterm: Array1<f64> = 1.0 - egdt.mapv(|val| val.powi(2));
 
-        let ktm: Array1<f64> = constants::K_BOLTZMANN * self.config.temperature / &self.masses;
+        let ktm: Array1<f64> =
+            constants::K_BOLTZMANN * self.config.thermostat_config.temperature / &self.masses;
 
         let mut rho: Array1<f64> = Array1::zeros(n_at);
         let mut psig: Array1<f64> = Array1::zeros(n_at);
@@ -240,7 +241,7 @@ pub fn get_angular_momentum(
     for index in 0..masses.len() {
         angular = angular
             + masses[index]
-                *cross_product(
+                * cross_product(
                     coordinates.slice(s![index, ..]),
                     velocities.slice(s![index, ..]),
                 );

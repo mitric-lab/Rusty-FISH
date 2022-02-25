@@ -119,6 +119,19 @@ fn default_pulse_config() -> PulseConfiguration {
     let pulse_config: PulseConfiguration = toml::from_str("").unwrap();
     return pulse_config;
 }
+fn default_thermostat_type() -> String {
+    THERMOSTAT_TYPE.to_string()
+}
+fn default_nh_steps() -> usize {
+    NH_STEPS
+}
+fn default_nh_chain_length() -> usize {
+    NH_CHAIN_LENGTH
+}
+fn default_thermostat_config() -> ThermostatConfiguration {
+    let thermostat_config: ThermostatConfiguration = toml::from_str("").unwrap();
+    thermostat_config
+}
 
 /// Struct that loads the configuration of the dynamics from the file "fish.toml"
 /// It holds the structs [HoppingConfiguration] and  [PulseConfigration]
@@ -132,8 +145,6 @@ pub struct DynamicConfiguration {
     pub stepsize: f64,
     #[serde(default = "default_dyn_mode")]
     pub dyn_mode: char,
-    #[serde(default = "default_temperature")]
-    pub temperature: f64,
     #[serde(default = "default_friction")]
     pub friction: f64,
     #[serde(default = "default_inputflag")]
@@ -150,8 +161,6 @@ pub struct DynamicConfiguration {
     pub extrapolate_forces: bool,
     #[serde(default = "default_gs_dynamic")]
     pub gs_dynamic: bool,
-    #[serde(default = "default_start_econst")]
-    pub time_coupling: f64,
     #[serde(default = "default_velocity_generation")]
     pub velocity_generation: u8,
     #[serde(default = "default_artificial_energy_conservation")]
@@ -160,6 +169,8 @@ pub struct DynamicConfiguration {
     pub hopping_config: HoppingConfiguration,
     #[serde(default = "default_pulse_config")]
     pub pulse_config: PulseConfiguration,
+    #[serde(default = "default_thermostat_config")]
+    pub thermostat_config: ThermostatConfiguration,
 }
 
 impl DynamicConfiguration {
@@ -205,7 +216,7 @@ pub struct HoppingConfiguration {
     pub start_econst: f64,
 }
 
-/// Struct that hold the parameters for the interaction of the molecular
+/// Struct that holds the parameters for the interaction of the molecular
 /// system with a guassian laser pulse
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PulseConfiguration {
@@ -221,6 +232,21 @@ pub struct PulseConfiguration {
     pub gaussian_factor: f64,
     #[serde(default = "default_time_delay")]
     pub time_delay: f64,
+}
+
+/// Struct that holds the parameters for the Thermostat
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ThermostatConfiguration {
+    #[serde(default = "default_thermostat_type")]
+    pub thermostat_type: String,
+    #[serde(default = "default_temperature")]
+    pub temperature: f64,
+    #[serde(default = "default_time_coupling")]
+    pub time_coupling: f64,
+    #[serde(default = "default_nh_chain_length")]
+    pub nh_chain_length: usize,
+    #[serde(default = "default_nh_steps")]
+    pub nh_steps: usize,
 }
 
 /// Read a xyz-geometry file like .xyz or .pdb and returns a [Frame](chemfiles::Frame)

@@ -1,5 +1,7 @@
 use crate::constants;
 use crate::dynamics::thermostat::BerendsenThermostat;
+use crate::dynamics::thermostat::NoseHoverThermostat;
+use crate::dynamics::thermostat::Thermostat;
 use crate::initialization::system::SystemData;
 use crate::initialization::velocities::*;
 use crate::initialization::DynamicConfiguration;
@@ -36,7 +38,7 @@ pub struct Simulation {
     pub saved_p_rand: Array2<f64>,
     pub saved_efactor: Array1<f64>,
     pub t_tot_last: Option<Array2<f64>>,
-    pub thermostat: BerendsenThermostat,
+    pub thermostat: Box<dyn Thermostat>,
 }
 
 impl Simulation {
@@ -70,18 +72,32 @@ impl Simulation {
         let mut velocities: Array2<f64> = Array2::zeros(system.coordinates.raw_dim());
         if config.velocity_generation == 0 {
             // initialize velocities from boltzmann distribution
-            velocities = initialize_velocities(system, config.temperature);
+            velocities = initialize_velocities(system, config.thermostat_config.temperature);
         } else {
             // read velocities from a file
             // TODO: read from file
         }
 
-        let thermostat: BerendsenThermostat = BerendsenThermostat::new(
-            config.time_coupling * constants::FS_TO_AU,
-            stepsize_au,
-            system.n_atoms,
-            config.temperature,
-        );
+        let thermostat: Box<dyn Thermostat> =
+            if config.thermostat_config.thermostat_type == *"Berendsen" {
+                Box::new(BerendsenThermostat::new(
+                    config.thermostat_config.time_coupling * constants::FS_TO_AU,
+                    stepsize_au,
+                    system.n_atoms,
+                    config.thermostat_config.temperature,
+                ))
+            } else if config.thermostat_config.thermostat_type == *"NoseHover" {
+                Box::new(NoseHoverThermostat::new(
+                    config.thermostat_config.time_coupling,
+                    stepsize_au,
+                    system.n_atoms,
+                    config.thermostat_config.nh_chain_length,
+                    config.thermostat_config.nh_steps,
+                    config.thermostat_config.temperature,
+                ))
+            } else {
+                panic!("Unknown thermostat! Choose between 'Berendsen' and 'NoseHover'")
+            };
 
         Simulation {
             state: config.initial_state,
