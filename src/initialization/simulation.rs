@@ -80,7 +80,7 @@ impl Simulation {
         }
 
         let thermostat: Box<dyn Thermostat> = if !config.thermostat_config.use_thermostat {
-            Box::new(NullThermostat::default())
+            Box::new(NullThermostat::new(system.n_atoms))
         } else if config.thermostat_config.thermostat_type == *"Berendsen" {
             Box::new(BerendsenThermostat::new(
                 config.thermostat_config.time_coupling * constants::FS_TO_AU,

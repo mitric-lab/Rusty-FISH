@@ -135,6 +135,31 @@ fn default_thermostat_config() -> ThermostatConfiguration {
     let thermostat_config: ThermostatConfiguration = toml::from_str("").unwrap();
     thermostat_config
 }
+fn default_print_restart() -> bool {
+    PRINT_RESTART
+}
+fn default_print_coordinates() -> bool {
+    PRINT_COORDINATES
+}
+fn default_print_energies() -> bool {
+    PRINT_ENERGIES
+}
+fn default_print_temperature() -> bool {
+    PRINT_TEMPERATURES
+}
+fn default_print_standard() -> bool {
+    PRINT_STANDARD
+}
+fn default_print_hopping() -> bool {
+    PRINT_HOPPING
+}
+fn default_print_state() -> bool {
+    PRINT_STATE
+}
+fn default_print_configuration() -> PrintConfiguration {
+    let config: PrintConfiguration = toml::from_str("").unwrap();
+    config
+}
 
 /// Struct that loads the configuration of the dynamics from the file "fish.toml"
 /// It holds the structs [HoppingConfiguration] and  [PulseConfigration]
@@ -166,6 +191,8 @@ pub struct DynamicConfiguration {
     pub pulse_config: PulseConfiguration,
     #[serde(default = "default_thermostat_config")]
     pub thermostat_config: ThermostatConfiguration,
+    #[serde(default = "default_print_configuration")]
+    pub print_config: PrintConfiguration,
 }
 
 impl DynamicConfiguration {
@@ -246,6 +273,25 @@ pub struct ThermostatConfiguration {
     pub nh_chain_length: usize,
     #[serde(default = "default_nh_steps")]
     pub nh_steps: usize,
+}
+
+/// Struct that controls the output of the simulation
+#[derive(Serialize, Deserialize, Clone)]
+pub struct PrintConfiguration {
+    #[serde(default = "default_print_restart")]
+    pub print_restart: bool,
+    #[serde(default = "default_print_coordinates")]
+    pub print_coordinates: bool,
+    #[serde(default = "default_print_energies")]
+    pub print_energies: bool,
+    #[serde(default = "default_print_temperature")]
+    pub print_temperature: bool,
+    #[serde(default = "default_print_standard")]
+    pub print_standard: bool,
+    #[serde(default = "default_print_hopping")]
+    pub print_hopping: bool,
+    #[serde(default = "default_print_state")]
+    pub print_state: bool,
 }
 
 /// Read a xyz-geometry file like .xyz or .pdb and returns a [Frame](chemfiles::Frame)

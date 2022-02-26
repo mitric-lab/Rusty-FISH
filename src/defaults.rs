@@ -83,3 +83,11 @@ pub const THERMOSTAT_TYPE: &str = "Berendsen";
 pub const NH_STEPS: usize = 1;
 pub const NH_CHAIN_LENGTH: usize = 3;
 pub const USE_BOLTZMANN_VELOCITIES: bool = true;
+
+pub const PRINT_RESTART: bool = true;
+pub const PRINT_COORDINATES: bool = true;
+pub const PRINT_ENERGIES: bool = true;
+pub const PRINT_TEMPERATURES: bool = false;
+pub const PRINT_STANDARD: bool = false;
+pub const PRINT_HOPPING: bool = false;
+pub const PRINT_STATE: bool = false;

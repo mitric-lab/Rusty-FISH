@@ -4,21 +4,31 @@ use crate::constants;
 
 pub trait Thermostat {
     fn scale_velocities(&mut self, vel: ArrayView2<f64>, kinetic_energy: f64) -> Array2<f64>;
+    fn get_temperature(&self, kinetic_energy: f64) -> f64;
 }
 
 pub struct NullThermostat {
     pub scaling: f64,
+    pub n_atoms: usize,
 }
 
 impl NullThermostat {
-    pub fn default() -> Self {
-        NullThermostat { scaling: 1.0 }
+    pub fn new(n_atoms: usize) -> Self {
+        NullThermostat {
+            scaling: 1.0,
+            n_atoms,
+        }
     }
 }
 
 impl Thermostat for NullThermostat {
     fn scale_velocities(&mut self, vel: ArrayView2<f64>, _kinetic_energy: f64) -> Array2<f64> {
         self.scaling * &vel
+    }
+    fn get_temperature(&self, kinetic_energy: f64) -> f64 {
+        let temperature: f64 =
+            (23209.0 / (self.n_atoms as f64 * 3.0 - 6.0)) * kinetic_energy * 27.2114;
+        temperature
     }
 }
 
@@ -39,14 +49,14 @@ impl BerendsenThermostat {
             target_temperature: temperature,
         }
     }
+}
 
+impl Thermostat for BerendsenThermostat {
     fn get_temperature(&self, kinetic_energy: f64) -> f64 {
         let temperature: f64 = (23209.0 / (self.n_atoms * 3.0 - 6.0)) * kinetic_energy * 27.2114;
         temperature
     }
-}
 
-impl Thermostat for BerendsenThermostat {
     fn scale_velocities(&mut self, vel: ArrayView2<f64>, kinetic_energy: f64) -> Array2<f64> {
         let current_temperature: f64 = self.get_temperature(kinetic_energy);
 
@@ -188,5 +198,11 @@ impl Thermostat for NoseHoverThermostat {
     fn scale_velocities(&mut self, vel: ArrayView2<f64>, kinetic_energy: f64) -> Array2<f64> {
         let scale: f64 = self.get_scaling_factor(kinetic_energy);
         scale * &vel
+    }
+
+    fn get_temperature(&self, kinetic_energy: f64) -> f64 {
+        let temperature: f64 =
+            (23209.0 / (self.n_atoms as f64 * 3.0 - 6.0)) * kinetic_energy * 27.2114;
+        temperature
     }
 }

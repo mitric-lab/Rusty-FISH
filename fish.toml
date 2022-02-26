@@ -35,3 +35,12 @@ temperature = 300.0
 time_coupling = 50.0
 nh_chain_length = 3
 nh_steps = 1
+
+[print_config]
+print_restart = true
+print_coordinates = true
+print_energies = true
+print_temperature = false
+print_standard = false
+print_hopping = false
+print_state = false

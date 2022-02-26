@@ -28,6 +28,7 @@ hashbrown = "0.11.2"
 soa_derive = "0.10.0"
 rand_distr = "0.4.0"
 rand ="0.8.3"
+anyhow="=1.0.44"
 
 [profile.release]
 debug = true

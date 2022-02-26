@@ -283,7 +283,6 @@ pub fn write_restart_custom(restart: &RestartOutput) {
     fs::write(file_path, string).expect("Unable to write restart file");
 }
 
-
 /// Print the parameters of the struct [HoppingOutput] to the file "hopping.dat".
 pub fn write_hopping(hopping_out: &HoppingOutput) {
     let file_path: &Path = Path::new("hopping.dat");
@@ -339,5 +338,21 @@ pub fn write_state(electronic_state: usize) {
         stream.flush().unwrap();
     } else {
         fs::write(file_path, string).expect("Unable to write to state.dat file");
+    }
+}
+
+/// Print the temperature of the system to the file "temperature.dat"
+pub fn write_temperature(temperature: f64) {
+    let file_path: &Path = Path::new("temperature.dat");
+    let mut string: String = temperature.to_string();
+    string.push_str(&String::from("\n"));
+
+    if file_path.exists() {
+        let file = OpenOptions::new().append(true).open(file_path).unwrap();
+        let mut stream = BufWriter::new(file);
+        stream.write_fmt(format_args!("{}", string)).unwrap();
+        stream.flush().unwrap();
+    } else {
+        fs::write(file_path, string).expect("Unable to write to temperature.dat file");
     }
 }
