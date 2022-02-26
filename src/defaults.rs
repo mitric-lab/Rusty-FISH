@@ -39,6 +39,8 @@ pub const EXTP: bool = false;
 // -1: no coupling, 0: only field coupling
 // 1: only nonadiabatic coupling, 2: both couplings
 pub const COUPLING: i8 = -1;
+pub const USE_STATE_COUPLING: bool = false;
+pub const USE_FIELD_COUPLING: bool = false;
 
 pub const ROTATIONAL_AVERAGING: bool = true;
 // INTEGRATION OF ELECTRONIC COEFFICIENTS
@@ -75,11 +77,9 @@ pub const GS_DYNAMIC: bool = true;
 // becomes active only for time t > start_econst
 pub const START_ECONST: f64 = 0.0;
 // Time coupling for the thermostat
+pub const USE_THERMOSTAT: bool = false;
 pub const TIME_COUPLING: f64 = 50.0;
 pub const THERMOSTAT_TYPE: &str = "Berendsen";
 pub const NH_STEPS: usize = 1;
 pub const NH_CHAIN_LENGTH: usize = 3;
-// velocity generation
-// 0 = velocities from boltzmann distribution
-// 1 = velocities as input
-pub const VELOCITY_GENERATION: u8 = 0;
+pub const USE_BOLTZMANN_VELOCITIES: bool = true;

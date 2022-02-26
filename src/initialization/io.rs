@@ -54,8 +54,11 @@ fn default_initial_state() -> usize {
 fn default_nstates() -> usize {
     NSTATES
 }
-fn default_coupling() -> i8 {
-    COUPLING
+fn default_use_field_coupling() -> bool {
+    USE_FIELD_COUPLING
+}
+fn default_use_state_coupling() -> bool {
+    USE_STATE_COUPLING
 }
 fn default_integration_type() -> String {
     INTEGRATION_TYPE.to_string()
@@ -87,8 +90,8 @@ fn default_decoherence_correction() -> bool {
 fn default_time_coupling() -> f64 {
     TIME_COUPLING
 }
-fn default_velocity_generation() -> u8 {
-    VELOCITY_GENERATION
+fn default_use_boltzmann_velocities() -> bool {
+    USE_BOLTZMANN_VELOCITIES
 }
 fn default_rotational_averaging() -> bool {
     ROTATIONAL_AVERAGING
@@ -116,6 +119,9 @@ fn default_pulse_config() -> PulseConfiguration {
     let pulse_config: PulseConfiguration = toml::from_str("").unwrap();
     return pulse_config;
 }
+fn default_use_thermostat() -> bool {
+    USE_THERMOSTAT
+}
 fn default_thermostat_type() -> String {
     THERMOSTAT_TYPE.to_string()
 }
@@ -140,22 +146,18 @@ pub struct DynamicConfiguration {
     pub nstep: usize,
     #[serde(default = "default_stepsize")]
     pub stepsize: f64,
-    #[serde(default = "default_dyn_mode")]
-    pub dyn_mode: char,
     #[serde(default = "default_friction")]
     pub friction: f64,
     #[serde(default = "default_restart_flag")]
     pub restart_flag: bool,
-    #[serde(default = "default_nuclear_propagation")]
-    pub nuclear_propagation: char,
     #[serde(default = "default_initial_state")]
     pub initial_state: usize,
     #[serde(default = "default_nstates")]
     pub nstates: usize,
     #[serde(default = "default_gs_dynamic")]
     pub gs_dynamic: bool,
-    #[serde(default = "default_velocity_generation")]
-    pub velocity_generation: u8,
+    #[serde(default = "default_use_boltzmann_velocities")]
+    pub use_boltzmann_velocities: bool,
     #[serde(default = "default_artificial_energy_conservation")]
     pub artificial_energy_conservation: bool,
     #[serde(default = "default_hopping_config")]
@@ -191,8 +193,8 @@ impl DynamicConfiguration {
 /// Structs that holds the parameters for the surface hopping routines
 #[derive(Serialize, Deserialize, Clone)]
 pub struct HoppingConfiguration {
-    #[serde(default = "default_coupling")]
-    pub coupling_flag: i8,
+    #[serde(default = "default_use_state_coupling")]
+    pub use_state_coupling: bool,
     #[serde(default = "default_n_small_steps")]
     pub integration_steps: usize,
     #[serde(default = "default_integration_type")]
@@ -213,6 +215,8 @@ pub struct HoppingConfiguration {
 /// system with a guassian laser pulse
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PulseConfiguration {
+    #[serde(default = "default_use_field_coupling")]
+    pub use_field_coupling: bool,
     #[serde(default = "default_rotational_averaging")]
     pub rotational_averaging: bool,
     #[serde(default = "default_number_pulses")]
@@ -230,6 +234,8 @@ pub struct PulseConfiguration {
 /// Struct that holds the parameters for the Thermostat
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ThermostatConfiguration {
+    #[serde(default = "default_use_thermostat")]
+    pub use_thermostat: bool,
     #[serde(default = "default_thermostat_type")]
     pub thermostat_type: String,
     #[serde(default = "default_temperature")]

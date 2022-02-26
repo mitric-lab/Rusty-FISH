@@ -1,6 +1,7 @@
 use crate::constants;
 use crate::dynamics::thermostat::BerendsenThermostat;
 use crate::dynamics::thermostat::NoseHoverThermostat;
+use crate::dynamics::thermostat::NullThermostat;
 use crate::dynamics::thermostat::Thermostat;
 use crate::initialization::system::SystemData;
 use crate::initialization::velocities::*;
@@ -70,7 +71,7 @@ impl Simulation {
         friction *= config.friction;
 
         let mut velocities: Array2<f64> = Array2::zeros(system.coordinates.raw_dim());
-        if config.velocity_generation == 0 {
+        if config.use_boltzmann_velocities {
             // initialize velocities from boltzmann distribution
             velocities = initialize_velocities(system, config.thermostat_config.temperature);
         } else {
@@ -78,26 +79,27 @@ impl Simulation {
             // TODO: read from file
         }
 
-        let thermostat: Box<dyn Thermostat> =
-            if config.thermostat_config.thermostat_type == *"Berendsen" {
-                Box::new(BerendsenThermostat::new(
-                    config.thermostat_config.time_coupling * constants::FS_TO_AU,
-                    stepsize_au,
-                    system.n_atoms,
-                    config.thermostat_config.temperature,
-                ))
-            } else if config.thermostat_config.thermostat_type == *"NoseHover" {
-                Box::new(NoseHoverThermostat::new(
-                    config.thermostat_config.time_coupling * constants::FS_TO_AU,
-                    stepsize_au,
-                    system.n_atoms,
-                    config.thermostat_config.nh_chain_length,
-                    config.thermostat_config.nh_steps,
-                    config.thermostat_config.temperature,
-                ))
-            } else {
-                panic!("Unknown thermostat! Choose between 'Berendsen' and 'NoseHover'")
-            };
+        let thermostat: Box<dyn Thermostat> = if !config.thermostat_config.use_thermostat {
+            Box::new(NullThermostat::default())
+        } else if config.thermostat_config.thermostat_type == *"Berendsen" {
+            Box::new(BerendsenThermostat::new(
+                config.thermostat_config.time_coupling * constants::FS_TO_AU,
+                stepsize_au,
+                system.n_atoms,
+                config.thermostat_config.temperature,
+            ))
+        } else if config.thermostat_config.thermostat_type == *"NoseHover" {
+            Box::new(NoseHoverThermostat::new(
+                config.thermostat_config.time_coupling * constants::FS_TO_AU,
+                stepsize_au,
+                system.n_atoms,
+                config.thermostat_config.nh_chain_length,
+                config.thermostat_config.nh_steps,
+                config.thermostat_config.temperature,
+            ))
+        } else {
+            panic!("Unknown thermostat! Choose between 'Berendsen' and 'NoseHover'! Or set the parameter 'use_thermostat' to 'false'!")
+        };
 
         Simulation {
             state: config.initial_state,

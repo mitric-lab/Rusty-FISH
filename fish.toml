@@ -1,18 +1,16 @@
 verbose = 0
 nstep = 1000
 stepsize = 0.1
-dyn_mode = "E"
 friction = 0.015585
 restart_flag = false
-nuclear_propagation = "v"
 initial_state = 0
 nstates = 1
 gs_dynamic = true
-velocity_generation = 0
+use_boltzmann_velocities = true
 artificial_energy_conservation = false
 
 [hopping_config]
-coupling_flag = -1
+use_state_coupling = false
 integration_steps = 2500
 integration_type = "auto"
 scalar_coupling_treshold = 0.01
@@ -22,6 +20,7 @@ decoherence_correction = false
 start_econst = 0.0
 
 [pulse_config]
+use_field_coupling = false
 rotational_averaging = true
 number_pulses = 1
 e0 = 0.1
@@ -30,6 +29,7 @@ gaussian_factor = 0.1
 time_delay = 0.1
 
 [thermostat_config]
+use_thermostat = false
 thermostat_type = "Berendsen"
 temperature = 300.0
 time_coupling = 50.0

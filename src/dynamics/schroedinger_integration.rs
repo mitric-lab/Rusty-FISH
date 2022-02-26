@@ -14,11 +14,10 @@ impl Simulation {
         // set the stepsize of the RK-integration
         let n_delta: usize = self.config.hopping_config.integration_steps;
         let delta_rk: f64 = self.stepsize / n_delta as f64;
-        let coupling_flag: i8 = self.config.hopping_config.coupling_flag;
 
         // calculate the nonadiabatic slope
         let mut nonadibatic_slope: Array2<f64> = Array2::zeros(nonadiabatic_scalar.raw_dim());
-        if coupling_flag == 1 || coupling_flag == 2 {
+        if self.config.hopping_config.use_state_coupling {
             for i in 0..self.config.nstates {
                 for j in 0..self.config.nstates {
                     nonadibatic_slope[[i, j]] = (nonadiabatic_scalar[[i, j]]
@@ -30,7 +29,7 @@ impl Simulation {
 
         // Get the electric field of the laser pulse
         let mut electric_field: Array1<f64> = Array1::zeros(4 * n_delta);
-        if coupling_flag == 0 || coupling_flag == 2 {
+        if self.config.pulse_config.use_field_coupling {
             electric_field = get_analytic_field(
                 &self.config.pulse_config,
                 4 * n_delta,
@@ -202,9 +201,7 @@ impl Simulation {
         let nstates: usize = self.config.nstates;
 
         // coupling_flag =0: field coupling only; 1: nonadiabatic coupling only; 2: both
-        if self.config.hopping_config.coupling_flag == 0
-            || self.config.hopping_config.coupling_flag == 2
-        {
+        if self.config.pulse_config.use_field_coupling {
             field_coupling = get_field_coupling(
                 self.dipole.view(),
                 n,
@@ -214,9 +211,7 @@ impl Simulation {
             );
         }
 
-        if self.config.hopping_config.coupling_flag == 1
-            || self.config.hopping_config.coupling_flag == 2
-        {
+        if self.config.hopping_config.use_state_coupling {
             let old_nonadiabatic_scalar: Array2<f64> = -1.0 * &self.nonadiabatic_scalar_old;
             non_adiabatic = get_nonadiabatic_coupling(
                 time,

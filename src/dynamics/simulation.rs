@@ -84,7 +84,7 @@ impl Simulation {
         // for the new geometry
         self.get_quantum_chem_data(interface);
 
-        if self.config.hopping_config.coupling_flag > -1 {
+        if self.config.hopping_config.use_state_coupling {
             if self.config.gs_dynamic {
                 // skip hopping procedure if the ground state is forced
             } else {
@@ -92,6 +92,7 @@ impl Simulation {
                 // integration of the schroedinger equation
                 // employing a runge-kutta scheme
                 if self.config.hopping_config.integration_type == "RK" {
+                    // Do the RUnge-Kutta integration
                     self.coefficients = self.new_coefficients();
                 } else if self.config.hopping_config.integration_type == "LD" {
                     let tmp: (Array1<c64>, Array2<f64>, Array2<f64>) =
@@ -100,7 +101,7 @@ impl Simulation {
                     self.t_tot_last = Some(tmp.2);
                 } else {
                     // automatic choice of integration method
-                    if self.config.hopping_config.coupling_flag == 1 {
+                    if !self.config.pulse_config.use_field_coupling {
                         // in the absence of an external field (jflag == 1) the
                         // coefficients are integrated in the local diabatic basis.
                         // The diabatization procedure requires the overlap matrix
@@ -110,6 +111,7 @@ impl Simulation {
                         self.coefficients = tmp.0;
                         self.t_tot_last = Some(tmp.2);
                     } else {
+                        // Runge Kutta integration
                         self.coefficients = self.new_coefficients();
                     }
                 }
@@ -149,13 +151,11 @@ impl Simulation {
         self.kinetic_energy = self.get_kinetic_energy();
 
         // scale velocities
-        if self.config.dyn_mode == 'T' {
-            self.velocities = self
-                .thermostat
-                .scale_velocities(self.velocities.view(), self.kinetic_energy);
-            // (self.velocities.view(),self.kinetic_energy);            self.velocities = self.scale_velocities_temperature();
-        }
-        if self.config.dyn_mode == 'E' && self.config.artificial_energy_conservation {
+        self.velocities = self
+            .thermostat
+            .scale_velocities(self.velocities.view(), self.kinetic_energy);
+
+        if self.config.artificial_energy_conservation {
             self.velocities =
                 self.scale_velocities_const_energy(old_state, old_kinetic, old_potential_energy);
         }
@@ -194,7 +194,7 @@ impl Simulation {
         write_energies(self.energies.view());
         write_state(self.state);
 
-        if self.config.hopping_config.coupling_flag > -1 {
+        if self.config.hopping_config.use_state_coupling {
             let hopping_out: HoppingOutput = HoppingOutput::new(
                 self.actual_time,
                 self.coefficients.view(),
@@ -281,7 +281,7 @@ impl Simulation {
         // for the new geometry
         self.get_quantum_chem_data(interface);
 
-        if self.config.hopping_config.coupling_flag > -1 {
+        if self.config.hopping_config.use_state_coupling {
             if self.config.gs_dynamic {
                 // skip hopping procedure if the ground state is forced
             } else {
@@ -297,7 +297,7 @@ impl Simulation {
                     self.t_tot_last = Some(tmp.2);
                 } else {
                     // automatic choice of integration method
-                    if self.config.hopping_config.coupling_flag == 1 {
+                    if !self.config.pulse_config.use_field_coupling {
                         // in the absence of an external field (jflag == 1) the
                         // coefficients are integrated in the local diabatic basis.
                         // The diabatization procedure requires the overlap matrix
@@ -308,6 +308,7 @@ impl Simulation {
                         self.coefficients = tmp.0;
                         self.t_tot_last = Some(tmp.2);
                     } else {
+                        // Runge-Kutta integration
                         self.coefficients = self.new_coefficients();
                     }
                 }
@@ -384,7 +385,7 @@ impl Simulation {
         write_energies(self.energies.view());
         write_state(self.state);
 
-        if self.config.hopping_config.coupling_flag > -1 {
+        if self.config.hopping_config.use_state_coupling {
             let hopping_out: HoppingOutput = HoppingOutput::new(
                 self.actual_time,
                 self.coefficients.view(),
@@ -426,9 +427,7 @@ impl Simulation {
         self.dipole = tmp.3;
 
         //calculate nonadiabatic scalar coupling
-        if self.config.hopping_config.coupling_flag == 1
-            || self.config.hopping_config.coupling_flag == 2
-        {
+        if self.config.hopping_config.use_state_coupling {
             self.nonadiabatic_scalar = get_nonadiabatic_scalar_coupling(
                 self.config.nstates,
                 0,
@@ -470,9 +469,7 @@ impl Simulation {
         self.nonadiabatic_arr_old = self.nonadiabatic_arr.clone();
 
         //calculate nonadiabatic scalar coupling
-        if self.config.hopping_config.coupling_flag == 1
-            || self.config.hopping_config.coupling_flag == 2
-        {
+        if self.config.hopping_config.use_state_coupling {
             self.nonadiabatic_scalar = get_nonadiabatic_scalar_coupling(
                 self.config.nstates,
                 0,
