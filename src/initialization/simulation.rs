@@ -90,7 +90,7 @@ impl Simulation {
             ))
         } else if config.thermostat_config.thermostat_type == *"NoseHover" {
             Box::new(NoseHoverThermostat::new(
-                config.thermostat_config.time_coupling * constants::FS_TO_AU,
+                config.thermostat_config.time_coupling,
                 stepsize_au,
                 system.n_atoms,
                 config.thermostat_config.nh_chain_length,

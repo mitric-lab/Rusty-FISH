@@ -136,7 +136,7 @@ impl NoseHoverThermostat {
     fn get_scaling_factor(&mut self, kinetic_energy: f64) -> f64 {
         // factors k_bT and N_f k_b T
         let kt: f64 = constants::K_BOLTZMANN * self.temperature;
-        let nkt: f64 = 3.0 * (self.n_atoms as f64 - 6.0) * kt;
+        let nkt: f64 = (3.0 * self.n_atoms as f64 - 6.0) * kt;
         let len: usize = self.chain_particles - 1;
 
         let mut qmass: Array1<f64> = Array1::zeros(self.chain_particles);
@@ -147,7 +147,7 @@ impl NoseHoverThermostat {
             qmass[iter] = val;
         }
 
-        let wdti: Array1<f64> = &self.weight_coefficients * self.dt;
+        let wdti: Array1<f64> = &self.weight_coefficients * self.dt / self.integrator_steps as f64;
         let wdti2: Array1<f64> = &wdti / 2.0;
         let wdti4: Array1<f64> = &wdti / 4.0;
         let wdti8: Array1<f64> = &wdti / 8.0;
@@ -161,13 +161,11 @@ impl NoseHoverThermostat {
             for j in 0..self.order {
                 // update chain_velocities
                 self.chain_velocities[len] += self.chain_accelerations[len] * wdti4[j];
-
-                for k in 0..len - 1 {
+                for k in 0..len {
                     let val: f64 = (-wdti8[j] * self.chain_velocities[len - k]).exp();
                     self.chain_velocities[len - k] = self.chain_velocities[len - k] * val.powi(2)
-                        + wdti4[j] * self.chain_accelerations[len - k] * val;
+                        + wdti4[j] * self.chain_accelerations[len - k - 1] * val;
                 }
-
                 let val: f64 = (-wdti2[j] * self.chain_velocities[0]).exp();
                 scaling *= val;
 
@@ -177,7 +175,7 @@ impl NoseHoverThermostat {
                 self.chain_positions = &self.chain_positions + &self.chain_velocities * wdti2[j];
 
                 // update thermostat velocities
-                for k in 0..len - 1 {
+                for k in 0..len {
                     let val: f64 = (-wdti8[j] * self.chain_velocities[k + 1]).exp();
 
                     self.chain_velocities[k] = self.chain_velocities[k] * val.powi(2)
