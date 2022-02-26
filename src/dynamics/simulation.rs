@@ -8,6 +8,22 @@ use ndarray::prelude::*;
 use ndarray_linalg::c64;
 
 impl Simulation {
+    pub fn verlet_dynamics(&mut self, interface: &mut dyn QuantumChemistryInterface) {
+        self.initialize_verlet(interface);
+
+        for _step in 0..self.config.nstep {
+            self.verlet_step(interface);
+        }
+    }
+
+    pub fn langevin_dynamics(&mut self, interface: &mut dyn QuantumChemistryInterface) {
+        self.initialize_langevin(interface);
+
+        for _step in 0..self.config.nstep {
+            self.langevin_step(interface);
+        }
+    }
+
     /// Initialize the velocity-verlet dynamic routine and print the first output of the dynamics simulation
     pub fn initialize_verlet(&mut self, interface: &mut dyn QuantumChemistryInterface) {
         if self.config.restart_flag {
