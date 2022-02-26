@@ -31,37 +31,66 @@ impl Simulation {
         } else {
             self.initiate_trajectory(interface);
         }
-        let restart: RestartOutput = RestartOutput::new(
-            self.n_atoms,
-            self.coordinates.view(),
-            self.velocities.view(),
-            self.nonadiabatic_arr.view(),
-            self.coefficients.view(),
-        );
-        write_restart(&restart);
 
-        let xyz_output: XyzOutput = XyzOutput::new(
-            self.n_atoms,
-            self.coordinates.view(),
-            self.atomic_numbers.clone(),
-        );
-        write_xyz_custom(&xyz_output);
+        // Print settings
+        if self.config.print_config.print_restart {
+            // Write Output in each step
+            let restart: RestartOutput = RestartOutput::new(
+                self.n_atoms,
+                self.coordinates.view(),
+                self.velocities.view(),
+                self.nonadiabatic_arr.view(),
+                self.coefficients.view(),
+            );
+            write_restart(&restart);
+        }
 
-        let total_energy: f64 = self.kinetic_energy + self.energies[self.state];
-        let energy_diff: f64 = total_energy;
-        let full: StandardOutput = StandardOutput::new(
-            0.0,
-            self.coordinates.view(),
-            self.velocities.view(),
-            self.kinetic_energy,
-            self.energies[self.state],
-            total_energy,
-            energy_diff,
-            self.forces.view(),
-            self.state,
-        );
-        write_full_custom(&full, self.masses.view());
-        write_state(self.state);
+        if self.config.print_config.print_coordinates {
+            let xyz_output: XyzOutput = XyzOutput::new(
+                self.n_atoms,
+                self.coordinates.view(),
+                self.atomic_numbers.clone(),
+            );
+            write_xyz_custom(&xyz_output);
+        }
+
+        if self.config.print_config.print_standard {
+            let total_energy: f64 = self.kinetic_energy + self.energies[self.state];
+            let energy_diff: f64 = total_energy;
+
+            let full: StandardOutput = StandardOutput::new(
+                self.actual_time,
+                self.coordinates.view(),
+                self.velocities.view(),
+                self.kinetic_energy,
+                self.energies[self.state],
+                total_energy,
+                energy_diff,
+                self.forces.view(),
+                self.state,
+            );
+            write_full_custom(&full, self.masses.view());
+        }
+        if self.config.print_config.print_energies {
+            write_energies(self.energies.view());
+        }
+        if self.config.print_config.print_state {
+            write_state(self.state);
+        }
+        if self.config.print_config.print_temperature {
+            let temperature: f64 = self.thermostat.get_temperature(self.kinetic_energy);
+            write_temperature(temperature);
+        }
+
+        if self.config.hopping_config.use_state_coupling && self.config.print_config.print_hopping {
+            let hopping_out: HoppingOutput = HoppingOutput::new(
+                self.actual_time,
+                self.coefficients.view(),
+                self.nonadiabatic_scalar.view(),
+                self.dipole.view(),
+            );
+            write_hopping(&hopping_out);
+        }
 
         // Calculate new coordinates from velocity-verlet
         self.coordinates = self.get_coord_verlet();
@@ -238,40 +267,61 @@ impl Simulation {
             self.initiate_trajectory(interface);
         }
 
-        // Write initial output
-        let restart: RestartOutput = RestartOutput::new(
-            self.n_atoms,
-            self.coordinates.view(),
-            self.velocities.view(),
-            self.nonadiabatic_arr.view(),
-            self.coefficients.view(),
-        );
-        write_restart(&restart);
-        // write_restart_custom(&restart);
+        // Print settings
+        if self.config.print_config.print_restart {
+            // Write Output in each step
+            let restart: RestartOutput = RestartOutput::new(
+                self.n_atoms,
+                self.coordinates.view(),
+                self.velocities.view(),
+                self.nonadiabatic_arr.view(),
+                self.coefficients.view(),
+            );
+            write_restart(&restart);
+        }
 
-        let xyz_output: XyzOutput = XyzOutput::new(
-            self.n_atoms,
-            self.coordinates.view(),
-            self.atomic_numbers.clone(),
-        );
-        write_xyz_custom(&xyz_output);
+        if self.config.print_config.print_coordinates {
+            let xyz_output: XyzOutput = XyzOutput::new(
+                self.n_atoms,
+                self.coordinates.view(),
+                self.atomic_numbers.clone(),
+            );
+            write_xyz_custom(&xyz_output);
+        }
 
-        let total_energy: f64 = self.kinetic_energy + self.energies[self.state];
-        let energy_diff: f64 = total_energy;
-        let full: StandardOutput = StandardOutput::new(
-            0.0,
-            self.coordinates.view(),
-            self.velocities.view(),
-            self.kinetic_energy,
-            self.energies[self.state],
-            total_energy,
-            energy_diff,
-            self.forces.view(),
-            self.state,
-        );
-        write_full_custom(&full, self.masses.view());
-        write_state(self.state);
-        write_energies(self.energies.view());
+        if self.config.print_config.print_standard {
+            let total_energy: f64 = self.kinetic_energy + self.energies[self.state];
+            let energy_diff: f64 = total_energy;
+
+            let full: StandardOutput = StandardOutput::new(
+                self.actual_time,
+                self.coordinates.view(),
+                self.velocities.view(),
+                self.kinetic_energy,
+                self.energies[self.state],
+                total_energy,
+                energy_diff,
+                self.forces.view(),
+                self.state,
+            );
+            write_full_custom(&full, self.masses.view());
+        }
+        if self.config.print_config.print_energies {
+            write_energies(self.energies.view());
+        }
+        if self.config.print_config.print_state {
+            write_state(self.state);
+        }
+
+        if self.config.hopping_config.use_state_coupling && self.config.print_config.print_hopping {
+            let hopping_out: HoppingOutput = HoppingOutput::new(
+                self.actual_time,
+                self.coefficients.view(),
+                self.nonadiabatic_scalar.view(),
+                self.dipole.view(),
+            );
+            write_hopping(&hopping_out);
+        }
 
         // Langevin routine
         let (_vrand, prand): (Array2<f64>, Array2<f64>) = self.get_random_terms();
