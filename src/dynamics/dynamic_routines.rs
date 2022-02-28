@@ -62,6 +62,11 @@ impl Simulation {
         new_velocities
     }
 
+    pub fn get_velocities_verlet_nh(&self) -> Array2<f64> {
+        let new_velocities: Array2<f64> = &self.velocities + &(0.5 * self.stepsize * &self.forces);
+        new_velocities
+    }
+
     pub fn get_coordinates_langevin(&self) -> Array2<f64> {
         let n_at: usize = self.friction.len();
         let mut new_coords: Array2<f64> = Array2::zeros(self.coordinates.raw_dim());

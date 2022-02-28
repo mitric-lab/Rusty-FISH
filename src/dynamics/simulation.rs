@@ -10,8 +10,16 @@ impl Simulation {
     pub fn verlet_dynamics(&mut self, interface: &mut dyn QuantumChemistryInterface) {
         self.initialize_verlet(interface);
 
-        for _step in 0..self.config.nstep {
-            self.verlet_step(interface);
+        if self.config.thermostat_config.use_thermostat
+            && self.config.thermostat_config.thermostat_type == *"NoseHover"
+        {
+            for _step in 0..self.config.nstep {
+                self.verlet_step_nh(interface);
+            }
+        } else {
+            for _step in 0..self.config.nstep {
+                self.verlet_step(interface);
+            }
         }
     }
 
@@ -38,6 +46,40 @@ impl Simulation {
         self.coordinates = self.get_coord_verlet();
         // Shift coordinates to center of mass
         self.coordinates = self.shift_to_center_of_mass();
+    }
+
+    pub fn verlet_step_nh(&mut self, interface: &mut dyn QuantumChemistryInterface) {
+        let old_energy: f64 = self.energies[self.state] + self.kinetic_energy;
+
+        // scale velocities
+        self.velocities = self
+            .thermostat
+            .scale_velocities(self.velocities.view(), self.kinetic_energy);
+        // Calculate new coordinates from velocity-verlet
+        self.velocities = self.get_velocities_verlet_nh();
+        // remove tranlation and rotation from the velocities
+        self.velocities = self.eliminate_translation_rotation_from_velocity();
+
+        // Calculate new coordinates from velocity-verlet
+        self.coordinates = self.get_coord_verlet();
+        // Shift coordinates to center of mass
+        self.coordinates = self.shift_to_center_of_mass();
+        // calculate energies, forces, dipoles, nonadiabatic_scalar
+        self.get_quantum_chem_data(interface);
+
+        // Calculate new coordinates from velocity-verlet
+        self.velocities = self.get_velocities_verlet_nh();
+        // remove tranlation and rotation from the velocities
+        self.velocities = self.eliminate_translation_rotation_from_velocity();
+
+        // scale velocities
+        self.velocities = self
+            .thermostat
+            .scale_velocities(self.velocities.view(), self.kinetic_energy);
+
+        self.kinetic_energy = self.get_kinetic_energy();
+        // Print settings
+        self.print_data(Some(old_energy));
     }
 
     /// Calculate a single step of the velocity-verlet dynamics utilizing the [QuantumChemistryInterface]
@@ -269,7 +311,9 @@ impl Simulation {
         let tmp: (Array1<f64>, Array2<f64>, Array3<f64>, Array3<f64>) =
             interface.compute_data(self.coordinates.view(), self.state);
 
-        self.energies = tmp.0;
+        self.energies
+            .slice_mut(s![..])
+            .assign(&tmp.0.slice(s![..self.config.nstates]));
         let forces: Array2<f64> = tmp.1;
         for (idx, mass) in self.masses.iter().enumerate() {
             self.forces
@@ -306,7 +350,9 @@ impl Simulation {
         let tmp: (Array1<f64>, Array2<f64>, Array3<f64>, Array3<f64>) =
             interface.compute_data(self.coordinates.view(), self.state);
 
-        self.energies = tmp.0;
+        self.energies
+            .slice_mut(s![..])
+            .assign(&tmp.0.slice(s![..self.config.nstates]));
         let forces: Array2<f64> = tmp.1;
         for (idx, mass) in self.masses.iter().enumerate() {
             self.forces
