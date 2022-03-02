@@ -62,7 +62,12 @@ impl Simulation {
         new_velocities
     }
 
-    pub fn get_velocities_verlet_nh(&self) -> Array2<f64> {
+    pub fn get_coord_nh(&self) -> Array2<f64> {
+        let new_coords: Array2<f64> = &self.coordinates + &(self.stepsize * &self.velocities);
+        new_coords
+    }
+
+    pub fn get_velocities_nh(&self) -> Array2<f64> {
         let new_velocities: Array2<f64> = &self.velocities + &(0.5 * self.stepsize * &self.forces);
         new_velocities
     }

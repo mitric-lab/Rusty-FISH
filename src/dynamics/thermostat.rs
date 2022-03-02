@@ -68,7 +68,7 @@ impl Thermostat for BerendsenThermostat {
     }
 }
 
-pub struct NoseHoverThermostat {
+pub struct NoseHooverThermostat {
     pub dt: f64,
     pub tau: f64,
     pub temperature: f64,
@@ -82,7 +82,7 @@ pub struct NoseHoverThermostat {
     pub integrator_steps: usize,
 }
 
-impl NoseHoverThermostat {
+impl NoseHooverThermostat {
     pub fn new(
         tau: f64,
         dt: f64,
@@ -111,14 +111,14 @@ impl NoseHoverThermostat {
 
                 arr
             }
-            _ => panic!("Only 3rd and 5th order of NoseHover are available!"),
+            _ => panic!("Only 3rd and 5th order of NoseHoover-Chains are available!"),
         };
 
         let chain_positions = Array::ones(chain_particles);
         let chain_velocities = Array::zeros(chain_particles);
         let chain_accelerations = Array::zeros(chain_particles);
 
-        NoseHoverThermostat {
+        NoseHooverThermostat {
             dt,
             tau,
             n_atoms,
@@ -163,7 +163,8 @@ impl NoseHoverThermostat {
                 self.chain_velocities[len] += self.chain_accelerations[len] * wdti4[j];
                 for k in 0..len {
                     let val: f64 = (-wdti8[j] * self.chain_velocities[len - k]).exp();
-                    self.chain_velocities[len - k] = self.chain_velocities[len - k] * val.powi(2)
+                    self.chain_velocities[len - k - 1] = self.chain_velocities[len - k - 1]
+                        * val.powi(2)
                         + wdti4[j] * self.chain_accelerations[len - k - 1] * val;
                 }
                 let val: f64 = (-wdti2[j] * self.chain_velocities[0]).exp();
@@ -192,7 +193,7 @@ impl NoseHoverThermostat {
     }
 }
 
-impl Thermostat for NoseHoverThermostat {
+impl Thermostat for NoseHooverThermostat {
     fn scale_velocities(&mut self, vel: ArrayView2<f64>, kinetic_energy: f64) -> Array2<f64> {
         let scale: f64 = self.get_scaling_factor(kinetic_energy);
         scale * &vel

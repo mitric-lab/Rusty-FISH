@@ -1,6 +1,6 @@
 use crate::constants;
 use crate::dynamics::thermostat::BerendsenThermostat;
-use crate::dynamics::thermostat::NoseHoverThermostat;
+use crate::dynamics::thermostat::NoseHooverThermostat;
 use crate::dynamics::thermostat::NullThermostat;
 use crate::dynamics::thermostat::Thermostat;
 use crate::initialization::system::SystemData;
@@ -88,8 +88,8 @@ impl Simulation {
                 system.n_atoms,
                 config.thermostat_config.temperature,
             ))
-        } else if config.thermostat_config.thermostat_type == *"NoseHover" {
-            Box::new(NoseHoverThermostat::new(
+        } else if config.thermostat_config.thermostat_type == *"NoseHoover" {
+            Box::new(NoseHooverThermostat::new(
                 config.thermostat_config.time_coupling,
                 stepsize_au,
                 system.n_atoms,
@@ -98,7 +98,7 @@ impl Simulation {
                 config.thermostat_config.temperature,
             ))
         } else {
-            panic!("Unknown thermostat! Choose between 'Berendsen' and 'NoseHover'! Or set the parameter 'use_thermostat' to 'false'!")
+            panic!("Unknown thermostat! Choose between 'Berendsen' and 'NoseHoover'! Or set the parameter 'use_thermostat' to 'false'!")
         };
 
         Simulation {

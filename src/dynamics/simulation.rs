@@ -11,7 +11,7 @@ impl Simulation {
         self.initialize_verlet(interface);
 
         if self.config.thermostat_config.use_thermostat
-            && self.config.thermostat_config.thermostat_type == *"NoseHover"
+            && self.config.thermostat_config.thermostat_type == *"NoseHoover"
         {
             for _step in 0..self.config.nstep {
                 self.verlet_step_nh(interface);
@@ -56,19 +56,19 @@ impl Simulation {
             .thermostat
             .scale_velocities(self.velocities.view(), self.kinetic_energy);
         // Calculate new coordinates from velocity-verlet
-        self.velocities = self.get_velocities_verlet_nh();
+        self.velocities = self.get_velocities_nh();
         // remove tranlation and rotation from the velocities
         self.velocities = self.eliminate_translation_rotation_from_velocity();
 
         // Calculate new coordinates from velocity-verlet
-        self.coordinates = self.get_coord_verlet();
+        self.coordinates = self.get_coord_nh();
         // Shift coordinates to center of mass
         self.coordinates = self.shift_to_center_of_mass();
         // calculate energies, forces, dipoles, nonadiabatic_scalar
         self.get_quantum_chem_data(interface);
 
         // Calculate new coordinates from velocity-verlet
-        self.velocities = self.get_velocities_verlet_nh();
+        self.velocities = self.get_velocities_nh();
         // remove tranlation and rotation from the velocities
         self.velocities = self.eliminate_translation_rotation_from_velocity();
 
