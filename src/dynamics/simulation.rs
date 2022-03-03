@@ -47,7 +47,7 @@ impl Simulation {
             // integration of the schroedinger equation
             // employing a runge-kutta scheme
             if self.config.hopping_config.integration_type == "RK" {
-                self.coefficients = self.new_coefficients();
+                self.coefficients = self.rk_integration();
             } else if self.config.hopping_config.integration_type == "LD" {
                 let tmp: (Array1<c64>, Array2<f64>, Array2<f64>) =
                     self.get_local_diabatization(last_energies, self.t_tot_last.clone());
@@ -67,7 +67,7 @@ impl Simulation {
                     self.t_tot_last = Some(tmp.2);
                 } else {
                     // Runge-Kutta integration
-                    self.coefficients = self.new_coefficients();
+                    self.coefficients = self.rk_integration();
                 }
             }
             // calculate the state of the simulation after the hopping procedure

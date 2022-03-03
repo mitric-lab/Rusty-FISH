@@ -6,7 +6,7 @@ use ndarray_linalg::{c64, Eig, Eigh, Inverse, UPLO};
 
 impl Simulation {
     /// Obtain the new coefficients of the states by utilizing a Runge-Kutta 4th order scheme
-    pub fn new_coefficients(&self) -> Array1<c64> {
+    pub fn rk_integration(&self) -> Array1<c64> {
         // get the nonadiabatic scalar couplings
         let old_nonadiabatic_scalar: Array2<f64> = -1.0 * &self.nonadiabatic_scalar_old;
         let nonadiabatic_scalar: Array2<f64> = -1.0 * &self.nonadiabatic_scalar;
