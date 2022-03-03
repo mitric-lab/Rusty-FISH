@@ -7,6 +7,7 @@ use ndarray::prelude::*;
 use ndarray_linalg::c64;
 
 impl Simulation {
+    /// Velocity-verlet dynamic routine of the struct Simulation.
     pub fn verlet_dynamics(&mut self, interface: &mut dyn QuantumChemistryInterface) {
         self.initialize_verlet(interface);
 
@@ -23,11 +24,75 @@ impl Simulation {
         }
     }
 
+    /// Lagevin dynamics routine of the struct Simulation
     pub fn langevin_dynamics(&mut self, interface: &mut dyn QuantumChemistryInterface) {
         self.initialize_langevin(interface);
 
         for _step in 0..self.config.nstep {
             self.langevin_step(interface);
+        }
+    }
+
+    /// Hopping and field coupling procedure. Includes the rescaling of the velocities.
+    pub fn surface_hopping_step(
+        &mut self,
+        last_energies: ArrayView1<f64>,
+        econst: f64,
+        old_state: usize,
+    ) {
+        if self.config.gs_dynamic {
+            // skip hopping procedure if the ground state is forced
+        } else {
+            let old_coeff: Array1<c64> = self.coefficients.clone();
+            // integration of the schroedinger equation
+            // employing a runge-kutta scheme
+            if self.config.hopping_config.integration_type == "RK" {
+                self.coefficients = self.new_coefficients();
+            } else if self.config.hopping_config.integration_type == "LD" {
+                let tmp: (Array1<c64>, Array2<f64>, Array2<f64>) =
+                    self.get_local_diabatization(last_energies, self.t_tot_last.clone());
+                self.coefficients = tmp.0;
+                self.t_tot_last = Some(tmp.2);
+            } else {
+                // automatic choice of integration method
+                if !self.config.pulse_config.use_field_coupling {
+                    // in the absence of an external field (jflag == 1) the
+                    // coefficients are integrated in the local diabatic basis.
+                    // The diabatization procedure requires the overlap matrix
+                    // between wavefunctions at different time steps.
+                    // let s_mat: Array2<f64> = self.s_mat.clone().unwrap();
+                    let tmp: (Array1<c64>, Array2<f64>, Array2<f64>) =
+                        self.get_local_diabatization(last_energies, self.t_tot_last.clone());
+                    self.coefficients = tmp.0;
+                    self.t_tot_last = Some(tmp.2);
+                } else {
+                    // Runge-Kutta integration
+                    self.coefficients = self.new_coefficients();
+                }
+            }
+            // calculate the state of the simulation after the hopping procedure
+            self.get_new_state(old_coeff.view());
+
+            if self.actual_time > econst && self.config.hopping_config.decoherence_correction {
+                // The decoherence correction should be turned on only
+                // if energy conservation is turned on, too.
+                // During the action of an explicit electric field pulse,
+                // the decoherence correction should be turned off.
+                self.coefficients = self.get_decoherence_correction(0.1);
+            }
+        }
+        // Rescale the velocities after a population transfer
+        if self.actual_time > econst && self.state != old_state {
+            if self.config.hopping_config.rescale_type == "uniform" {
+                let tmp: (Array2<f64>, usize) = self.uniformly_rescaled_velocities(self.state);
+                self.state = tmp.1;
+                self.velocities = tmp.0;
+            } else if self.config.hopping_config.rescale_type == "vector" {
+                let tmp: (Array2<f64>, usize) =
+                    self.rescaled_velocities(old_state, self.config.nstates - 1);
+                self.state = tmp.1;
+                self.velocities = tmp.0;
+            }
         }
     }
 
@@ -50,6 +115,9 @@ impl Simulation {
 
     pub fn verlet_step_nh(&mut self, interface: &mut dyn QuantumChemistryInterface) {
         let old_energy: f64 = self.energies[self.state] + self.kinetic_energy;
+        let last_energies: Array1<f64> = self.energies.clone();
+        let old_state: usize = self.state;
+        let econst: f64 = self.config.hopping_config.start_econst * constants::FS_TO_AU;
 
         // scale velocities
         self.velocities = self
@@ -66,6 +134,11 @@ impl Simulation {
         self.coordinates = self.shift_to_center_of_mass();
         // calculate energies, forces, dipoles, nonadiabatic_scalar
         self.get_quantum_chem_data(interface);
+
+        // Surface hopping routines
+        if self.config.hopping_config.use_state_coupling {
+            self.surface_hopping_step(last_energies.view(), econst, old_state);
+        }
 
         // Calculate new coordinates from velocity-verlet
         self.velocities = self.get_velocities_nh();
@@ -97,62 +170,11 @@ impl Simulation {
         // for the new geometry
         self.get_quantum_chem_data(interface);
 
+        // surface hopping procedure
         if self.config.hopping_config.use_state_coupling {
-            if self.config.gs_dynamic {
-                // skip hopping procedure if the ground state is forced
-            } else {
-                let old_coeff: Array1<c64> = self.coefficients.clone();
-                // integration of the schroedinger equation
-                // employing a runge-kutta scheme
-                if self.config.hopping_config.integration_type == "RK" {
-                    // Do the RUnge-Kutta integration
-                    self.coefficients = self.new_coefficients();
-                } else if self.config.hopping_config.integration_type == "LD" {
-                    let tmp: (Array1<c64>, Array2<f64>, Array2<f64>) =
-                        self.get_local_diabatization(last_energies.view(), self.t_tot_last.clone());
-                    self.coefficients = tmp.0;
-                    self.t_tot_last = Some(tmp.2);
-                } else {
-                    // automatic choice of integration method
-                    if !self.config.pulse_config.use_field_coupling {
-                        // in the absence of an external field (jflag == 1) the
-                        // coefficients are integrated in the local diabatic basis.
-                        // The diabatization procedure requires the overlap matrix
-                        // between wavefunctions at different time steps.
-                        let tmp: (Array1<c64>, Array2<f64>, Array2<f64>) = self
-                            .get_local_diabatization(last_energies.view(), self.t_tot_last.clone());
-                        self.coefficients = tmp.0;
-                        self.t_tot_last = Some(tmp.2);
-                    } else {
-                        // Runge Kutta integration
-                        self.coefficients = self.new_coefficients();
-                    }
-                }
-                // calculate the state of the simulation after the hopping procedure
-                self.get_new_state(old_coeff.view());
-
-                if self.actual_time > econst && self.config.hopping_config.decoherence_correction {
-                    // The decoherence correction should be turned on only
-                    // if energy conservation is turned on, too.
-                    // During the action of an explicit electric field pulse,
-                    // the decoherence correction should be turned off.
-                    self.coefficients = self.get_decoherence_correction(0.1);
-                }
-            }
-            // Rescale the velocities after a population transfer
-            if self.actual_time > econst && self.state != old_state {
-                if self.config.hopping_config.rescale_type == "uniform" {
-                    let tmp: (Array2<f64>, usize) = self.uniformly_rescaled_velocities(old_state);
-                    self.state = tmp.1;
-                    self.velocities = tmp.0;
-                } else if self.config.hopping_config.rescale_type == "vector" {
-                    let tmp: (Array2<f64>, usize) =
-                        self.rescaled_velocities(old_state, self.config.nstates - 1);
-                    self.state = tmp.1;
-                    self.velocities = tmp.0;
-                }
-            }
+            self.surface_hopping_step(last_energies.view(), econst, old_state);
         }
+
         self.actual_step += self.config.hopping_config.integration_steps as f64;
 
         // Calculate new coordinates from velocity-verlet
@@ -222,61 +244,9 @@ impl Simulation {
         self.get_quantum_chem_data(interface);
 
         if self.config.hopping_config.use_state_coupling {
-            if self.config.gs_dynamic {
-                // skip hopping procedure if the ground state is forced
-            } else {
-                let old_coeff: Array1<c64> = self.coefficients.clone();
-                // integration of the schroedinger equation
-                // employing a runge-kutta scheme
-                if self.config.hopping_config.integration_type == "RK" {
-                    self.coefficients = self.new_coefficients();
-                } else if self.config.hopping_config.integration_type == "LD" {
-                    let tmp: (Array1<c64>, Array2<f64>, Array2<f64>) =
-                        self.get_local_diabatization(last_energies.view(), self.t_tot_last.clone());
-                    self.coefficients = tmp.0;
-                    self.t_tot_last = Some(tmp.2);
-                } else {
-                    // automatic choice of integration method
-                    if !self.config.pulse_config.use_field_coupling {
-                        // in the absence of an external field (jflag == 1) the
-                        // coefficients are integrated in the local diabatic basis.
-                        // The diabatization procedure requires the overlap matrix
-                        // between wavefunctions at different time steps.
-                        // let s_mat: Array2<f64> = self.s_mat.clone().unwrap();
-                        let tmp: (Array1<c64>, Array2<f64>, Array2<f64>) = self
-                            .get_local_diabatization(last_energies.view(), self.t_tot_last.clone());
-                        self.coefficients = tmp.0;
-                        self.t_tot_last = Some(tmp.2);
-                    } else {
-                        // Runge-Kutta integration
-                        self.coefficients = self.new_coefficients();
-                    }
-                }
-                // calculate the state of the simulation after the hopping procedure
-                self.get_new_state(old_coeff.view());
-
-                if self.actual_time > econst && self.config.hopping_config.decoherence_correction {
-                    // The decoherence correction should be turned on only
-                    // if energy conservation is turned on, too.
-                    // During the action of an explicit electric field pulse,
-                    // the decoherence correction should be turned off.
-                    self.coefficients = self.get_decoherence_correction(0.1);
-                }
-            }
-            // Rescale the velocities after a population transfer
-            if self.actual_time > econst && self.state != old_state {
-                if self.config.hopping_config.rescale_type == "uniform" {
-                    let tmp: (Array2<f64>, usize) = self.uniformly_rescaled_velocities(self.state);
-                    self.state = tmp.1;
-                    self.velocities = tmp.0;
-                } else if self.config.hopping_config.rescale_type == "vector" {
-                    let tmp: (Array2<f64>, usize) =
-                        self.rescaled_velocities(old_state, self.config.nstates - 1);
-                    self.state = tmp.1;
-                    self.velocities = tmp.0;
-                }
-            }
+            self.surface_hopping_step(last_energies.view(), econst, old_state);
         }
+
         self.actual_step += self.config.hopping_config.integration_steps as f64;
 
         let (vrand, prand): (Array2<f64>, Array2<f64>) = self.get_random_terms();
