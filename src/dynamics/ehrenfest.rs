@@ -68,8 +68,11 @@ impl Simulation {
         interface: &mut dyn QuantumChemistryInterface,
     ) -> Array2<f64> {
         let abs_coefficients: Array1<f64> = self.coefficients.map(|val| val.norm());
-        let tmp: (Array2<f64>, Array2<f64>) =
-            interface.compute_ehrenfest(self.coordinates.view(), abs_coefficients.view());
+        let tmp: (Array2<f64>, Array2<f64>) = interface.compute_ehrenfest(
+            self.coordinates.view(),
+            abs_coefficients.view(),
+            self.config.ehrenfest_config.state_threshold,
+        );
 
         self.energies = tmp.1.diag().to_owned();
         let forces: Array2<f64> = tmp.0;

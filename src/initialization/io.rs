@@ -166,6 +166,10 @@ fn default_use_ehrenfest() -> bool {
 fn default_state_threshold() -> f64 {
     STATE_THRESHOLD
 }
+fn default_ehrenfest_configuration() -> EhrenfestConfiguration {
+    let config: EhrenfestConfiguration = toml::from_str("").unwrap();
+    config
+}
 
 /// Struct that loads the configuration of the dynamics from the file "fish.toml"
 /// It holds the structs [HoppingConfiguration] and  [PulseConfigration]
@@ -193,6 +197,8 @@ pub struct DynamicConfiguration {
     pub artificial_energy_conservation: bool,
     #[serde(default = "default_hopping_config")]
     pub hopping_config: HoppingConfiguration,
+    #[serde(default = "default_ehrenfest_configuration")]
+    pub ehrenfest_config: EhrenfestConfiguration,
     #[serde(default = "default_pulse_config")]
     pub pulse_config: PulseConfiguration,
     #[serde(default = "default_thermostat_config")]
