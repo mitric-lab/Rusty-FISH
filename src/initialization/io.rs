@@ -160,6 +160,12 @@ fn default_print_configuration() -> PrintConfiguration {
     let config: PrintConfiguration = toml::from_str("").unwrap();
     config
 }
+fn default_use_ehrenfest() -> bool {
+    USE_EHRENFEST
+}
+fn default_state_threshold() -> f64 {
+    STATE_THRESHOLD
+}
 
 /// Struct that loads the configuration of the dynamics from the file "fish.toml"
 /// It holds the structs [HoppingConfiguration] and  [PulseConfigration]
@@ -215,6 +221,17 @@ impl DynamicConfiguration {
         }
         return config;
     }
+}
+
+/// Structs that holds the parameters for the Ehrenfest routine
+#[derive(Serialize, Deserialize, Clone)]
+pub struct EhrenfestConfiguration {
+    #[serde(default = "default_use_ehrenfest")]
+    pub use_ehrenfest: bool,
+    #[serde(default = "default_n_small_steps")]
+    pub integration_steps: usize,
+    #[serde(default = "default_state_threshold")]
+    pub state_threshold: f64,
 }
 
 /// Structs that holds the parameters for the surface hopping routines

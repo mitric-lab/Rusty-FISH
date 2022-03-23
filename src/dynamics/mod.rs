@@ -8,6 +8,8 @@ pub use utils::*;
 
 pub mod coupling_processing;
 pub mod dynamic_routines;
+pub mod ehrenfest;
+pub mod ehrenfest_integration;
 pub mod hopping_routines;
 pub mod schroedinger_integration;
 pub mod simulation;

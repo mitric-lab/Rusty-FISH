@@ -91,3 +91,5 @@ pub const PRINT_TEMPERATURES: bool = false;
 pub const PRINT_STANDARD: bool = false;
 pub const PRINT_HOPPING: bool = false;
 pub const PRINT_STATE: bool = false;
+pub const USE_EHRENFEST: bool = false;
+pub const STATE_THRESHOLD: f64 = 0.01;

@@ -1,7 +1,6 @@
 use crate::initialization::PulseConfiguration;
 use crate::initialization::Simulation;
 use ndarray::prelude::*;
-use ndarray::{Array, Array1, Array2, ArrayView1, ArrayView2, Axis};
 use ndarray_linalg::{c64, Eig, Eigh, Inverse, UPLO};
 
 impl Simulation {
