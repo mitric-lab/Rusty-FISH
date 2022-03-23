@@ -16,5 +16,6 @@ pub trait QuantumChemistryInterface {
         &mut self,
         coordinates: ArrayView2<f64>,
         state_coefficients: ArrayView1<f64>,
+        thresh: f64,
     ) -> (Array2<f64>, Array2<f64>);
 }
