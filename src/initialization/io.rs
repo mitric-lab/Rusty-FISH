@@ -166,6 +166,12 @@ fn default_use_ehrenfest() -> bool {
 fn default_state_threshold() -> f64 {
     STATE_THRESHOLD
 }
+fn default_use_restraint() -> bool {
+    USE_RESTRAINT
+}
+fn default_force_constant() -> f64 {
+    FORCE_CONSTANT
+}
 fn default_ehrenfest_configuration() -> EhrenfestConfiguration {
     let config: EhrenfestConfiguration = toml::from_str("").unwrap();
     config
@@ -238,6 +244,10 @@ pub struct EhrenfestConfiguration {
     pub integration_steps: usize,
     #[serde(default = "default_state_threshold")]
     pub state_threshold: f64,
+    #[serde(default = "default_use_restraint")]
+    pub use_restraint: bool,
+    #[serde(default = "default_force_constant")]
+    pub force_constant: f64,
 }
 
 /// Structs that holds the parameters for the surface hopping routines

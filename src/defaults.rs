@@ -93,3 +93,5 @@ pub const PRINT_HOPPING: bool = false;
 pub const PRINT_STATE: bool = false;
 pub const USE_EHRENFEST: bool = false;
 pub const STATE_THRESHOLD: f64 = 0.01;
+pub const USE_RESTRAINT: bool = false;
+pub const FORCE_CONSTANT: f64 = 1.0;

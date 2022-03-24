@@ -1,5 +1,6 @@
 use crate::initialization::Simulation;
 use crate::interface::QuantumChemistryInterface;
+use ::std::ops::AddAssign;
 use ndarray::prelude::*;
 use ndarray_linalg::c64;
 
@@ -51,6 +52,7 @@ impl Simulation {
     pub fn initialize_ehrenfest(&mut self) {
         // remove COM from coordinates
         self.coordinates = self.shift_to_center_of_mass();
+        self.initial_coordinates = self.coordinates.clone();
         // remove tranlation and rotation
         self.velocities = self.eliminate_translation_rotation_from_velocity();
         // calculate the kinetic energy
@@ -84,5 +86,16 @@ impl Simulation {
 
         // return the excitonic couplings
         tmp.1
+    }
+
+    pub fn apply_harmonic_restraint(&mut self) {
+        // calculate the force constant in au. The value of the config is in kcal/mol
+        let force_constant: f64 = self.config.ehrenfest_config.force_constant * 0.00159362;
+        // calculate the forces for the deviation from the initial coordinates
+        let forces: Array2<f64> = -force_constant * (&self.coordinates - &self.initial_coordinates);
+
+        for (idx, force) in forces.outer_iter().enumerate() {
+            self.forces.slice_mut(s![idx, ..]).add_assign(&force);
+        }
     }
 }
