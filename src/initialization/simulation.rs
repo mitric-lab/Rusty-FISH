@@ -41,6 +41,7 @@ pub struct Simulation {
     pub saved_efactor: Array1<f64>,
     pub t_tot_last: Option<Array2<f64>>,
     pub thermostat: Box<dyn Thermostat>,
+    pub cis_vec: Vec<Array2<f64>>,
 }
 
 impl Simulation {
@@ -132,6 +133,7 @@ impl Simulation {
             saved_p_rand,
             t_tot_last: None,
             thermostat,
+            cis_vec: Vec::new(),
         }
     }
 }

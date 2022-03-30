@@ -66,5 +66,10 @@ impl Simulation {
             );
             write_hopping(&hopping_out);
         }
+
+        if self.config.ehrenfest_config.use_ehrenfest {
+            let out: EhrenfestOutput = EhrenfestOutput::new(self.coefficients.view());
+            write_ehrenfest(&out);
+        }
     }
 }

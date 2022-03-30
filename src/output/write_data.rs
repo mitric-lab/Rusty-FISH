@@ -99,6 +99,28 @@ impl HoppingOutput {
     }
 }
 
+/// Struct that stores the output of the ehrenfest routines
+#[derive(Serialize, Deserialize, Clone)]
+pub struct EhrenfestOutput {
+    pub coefficients_real: Array1<f64>,
+    pub coefficients_imag: Array1<f64>,
+    pub coefficients_abs: Array1<f64>,
+}
+
+impl EhrenfestOutput {
+    pub fn new(coefficients: ArrayView1<c64>) -> EhrenfestOutput {
+        let coefficients_real: Array1<f64> = coefficients.map(|val| val.re);
+        let coefficients_imag: Array1<f64> = coefficients.map(|val| val.im);
+        let coefficients_abs: Array1<f64> = coefficients.map(|val| val.norm_sqr());
+
+        EhrenfestOutput {
+            coefficients_real,
+            coefficients_imag,
+            coefficients_abs,
+        }
+    }
+}
+
 /// Struct that stores the parameters, which are necessary to restart the dynamics simulation
 #[derive(Serialize, Deserialize, Clone)]
 pub struct RestartOutput {
@@ -295,6 +317,21 @@ pub fn write_hopping(hopping_out: &HoppingOutput) {
         stream.flush().unwrap();
     } else {
         fs::write(file_path, hopp).expect("Unable to write to hopping.dat file");
+    }
+}
+
+/// Print the parameters of the struct [EhrenfestOutput] to the file "ehrenfest.dat".
+pub fn write_ehrenfest(ehrenfest_out: &EhrenfestOutput) {
+    let file_path: &Path = Path::new("ehrenfest.dat");
+    let mut string: String = String::from("#############################\n");
+    string.push_str(&toml::to_string(ehrenfest_out).unwrap());
+    if file_path.exists() {
+        let file = OpenOptions::new().append(true).open(file_path).unwrap();
+        let mut stream = BufWriter::new(file);
+        stream.write_fmt(format_args!("{}", string)).unwrap();
+        stream.flush().unwrap();
+    } else {
+        fs::write(file_path, string).expect("Unable to write to hopping.dat file");
     }
 }
 

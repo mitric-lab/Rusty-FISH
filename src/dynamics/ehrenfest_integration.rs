@@ -1,11 +1,21 @@
 use crate::initialization::Simulation;
 use ndarray::prelude::*;
-use ndarray_linalg::c64;
+use ndarray_linalg::{c64, Eig, Inverse};
 
 impl Simulation {
+    pub fn ehrenfest_matrix_exponential(&self, exciton_couplings: ArrayView2<c64>) -> Array1<c64> {
+        let mat: Array2<c64> =
+            exciton_couplings.mapv(|val| -c64::new(0.0, 1.0) * val * self.stepsize);
+        let (eig, eig_vec): (Array1<c64>, Array2<c64>) = mat.eig().unwrap();
+        let diag: Array1<c64> = eig.mapv(|val| val.exp());
+        let mat: Array2<c64> = eig_vec.dot(&Array::from_diag(&diag).dot(&eig_vec.inv().unwrap()));
+
+        mat.dot(&self.coefficients)
+    }
+
     pub fn ehrenfest_sod_integration(&self, exciton_couplings: ArrayView2<c64>) -> Array1<c64> {
         // set the stepsize of the RK-integration
-        let n_delta: usize = self.config.hopping_config.integration_steps;
+        let n_delta: usize = self.config.ehrenfest_config.integration_steps;
         let dt: f64 = self.stepsize / n_delta as f64;
 
         let mut coefficients: Array1<c64> = self.coefficients.clone();
@@ -40,7 +50,8 @@ impl Simulation {
     pub fn ehrenfest_rk_integration(&self, excitonic_couplings: ArrayView2<c64>) -> Array1<c64> {
         // set the stepsize of the RK-integration
         let n_delta: usize = self.config.hopping_config.integration_steps;
-        let delta_rk: f64 = self.stepsize / n_delta as f64;
+        // let delta_rk: f64 = self.stepsize / n_delta as f64;
+        let delta_rk: f64 = 1.0 / n_delta as f64;
 
         // start the Runge-Kutta integration
         let mut old_coefficients: Array1<c64> = self.coefficients.clone();
