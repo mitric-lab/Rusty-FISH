@@ -17,8 +17,10 @@ pub trait QuantumChemistryInterface {
         coordinates: ArrayView2<f64>,
         state_coefficients: ArrayView1<f64>,
         thresh: f64,
+        dt: f64,
     ) -> (
         f64,
+        Array2<f64>,
         Array2<f64>,
         Array2<f64>,
         Vec<Array2<f64>>,

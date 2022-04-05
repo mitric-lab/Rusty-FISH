@@ -9,15 +9,24 @@ use std::fs::File;
 impl Simulation {
     ///Ehrenfest dynamics routine of the struct Simulation
     pub fn ehrenfest_dynamics(&mut self, interface: &mut dyn QuantumChemistryInterface) {
-        self.initialize_ehrenfest();
-
         let mut npz = NpzWriter::new(File::create("arrays.npz").unwrap());
         let mut npz_c = NpzWriter::new(File::create("cis_arrays.npz").unwrap());
         let mut npz_q = NpzWriter::new(File::create("qtrans_arrays.npz").unwrap());
         let mut npz_mo = NpzWriter::new(File::create("mo_arrays.npz").unwrap());
         let mut npz_h = NpzWriter::new(File::create("h_arrays.npz").unwrap());
         let mut npz_x = NpzWriter::new(File::create("x_arrays.npz").unwrap());
-        for step in 0..self.config.nstep {
+
+        self.initialize_ehrenfest(
+            interface,
+            &mut npz,
+            0,
+            &mut npz_c,
+            &mut npz_q,
+            &mut npz_mo,
+            &mut npz_h,
+            &mut npz_x,
+        );
+        for step in 1..self.config.nstep {
             self.ehrenfest_step(
                 interface,
                 &mut npz,
@@ -52,9 +61,7 @@ impl Simulation {
         let old_energy: f64 = self.energies[self.state] + self.kinetic_energy;
         // calculate the gradient and the excitonic couplings
         let excitonic_couplings: Array2<f64> =
-            self.get_ehrenfest_data(interface, npz_c, npz_q, npz_mo, npz_h, npz_x, step);
-        npz.add_array(step.to_string(), &excitonic_couplings)
-            .unwrap();
+            self.get_ehrenfest_data(interface, npz, npz_c, npz_q, npz_mo, npz_h, npz_x, step);
         // convert to complex array
         let excitonic_couplings: Array2<c64> =
             excitonic_couplings.map(|val| val * c64::new(1.0, 0.0));
@@ -87,14 +94,31 @@ impl Simulation {
         self.coordinates = self.shift_to_center_of_mass();
     }
 
-    pub fn initialize_ehrenfest(&mut self) {
+    pub fn initialize_ehrenfest(
+        &mut self,
+        interface: &mut dyn QuantumChemistryInterface,
+        npz: &mut NpzWriter<File>,
+        step: usize,
+        npz_c: &mut NpzWriter<File>,
+        npz_q: &mut NpzWriter<File>,
+        npz_mo: &mut NpzWriter<File>,
+        npz_h: &mut NpzWriter<File>,
+        npz_x: &mut NpzWriter<File>,
+    ) {
         // remove COM from coordinates
         self.coordinates = self.shift_to_center_of_mass();
         self.initial_coordinates = self.coordinates.clone();
         // remove tranlation and rotation
         self.velocities = self.eliminate_translation_rotation_from_velocity();
+        // do the first calculation using the QuantumChemistryInterface
+        self.get_ehrenfest_data(interface, npz, npz_c, npz_q, npz_mo, npz_h, npz_x, step);
+
         // calculate the kinetic energy
         self.kinetic_energy = self.get_kinetic_energy();
+
+        // Print settings
+        self.print_data(None);
+
         // Calculate new coordinates from velocity-verlet
         self.coordinates = self.get_coord_verlet();
         // Shift coordinates to center of mass
@@ -104,6 +128,7 @@ impl Simulation {
     pub fn get_ehrenfest_data(
         &mut self,
         interface: &mut dyn QuantumChemistryInterface,
+        npz: &mut NpzWriter<File>,
         npz_c: &mut NpzWriter<File>,
         npz_q: &mut NpzWriter<File>,
         npz_mo: &mut NpzWriter<File>,
@@ -116,6 +141,7 @@ impl Simulation {
             f64,
             Array2<f64>,
             Array2<f64>,
+            Array2<f64>,
             Vec<Array2<f64>>,
             Vec<Array1<f64>>,
             Vec<Array2<f64>>,
@@ -125,6 +151,7 @@ impl Simulation {
             self.coordinates.view(),
             abs_coefficients.view(),
             self.config.ehrenfest_config.state_threshold,
+            self.config.stepsize,
         );
 
         self.energies[0] = tmp.0;
@@ -139,72 +166,60 @@ impl Simulation {
         if self.config.ehrenfest_config.use_restraint {
             self.apply_harmonic_restraint();
         }
-        for (idx, arr) in tmp.3.iter().enumerate() {
+        npz.add_array(step.to_string(), &tmp.2).unwrap();
+        for (idx, arr) in tmp.4.iter().enumerate() {
             let mut string: String = step.to_string();
             string.push_str(&String::from("-"));
             string.push_str(&idx.to_string());
             npz_c.add_array(string, arr).unwrap();
         }
-        for (idx, arr) in tmp.4.iter().enumerate() {
+        for (idx, arr) in tmp.5.iter().enumerate() {
             let mut string: String = step.to_string();
             string.push_str(&String::from("-"));
             string.push_str(&idx.to_string());
             npz_q.add_array(string, arr).unwrap();
         }
-        for (idx, arr) in tmp.5.iter().enumerate() {
+        for (idx, arr) in tmp.6.iter().enumerate() {
             let mut string: String = step.to_string();
             string.push_str(&String::from("-"));
             string.push_str(&idx.to_string());
             npz_mo.add_array(string, arr).unwrap();
         }
-        for (idx, arr) in tmp.6.iter().enumerate() {
+        for (idx, arr) in tmp.7.iter().enumerate() {
             let mut string: String = step.to_string();
             string.push_str(&String::from("-"));
             string.push_str(&idx.to_string());
             npz_h.add_array(string, arr).unwrap();
         }
-        for (idx, arr) in tmp.7.iter().enumerate() {
+        for (idx, arr) in tmp.8.iter().enumerate() {
             let mut string: String = step.to_string();
             string.push_str(&String::from("-"));
             string.push_str(&idx.to_string());
             npz_x.add_array(string, arr).unwrap();
         }
-        // set old cis_coefficients
-        let old_cis_vec: &Vec<Array2<f64>> = &self.cis_vec;
-        // align cis coefficients
-        let mut signs: Vec<f64> = Vec::new();
-        if !old_cis_vec.is_empty() {
-            for (old_cis, new_cis) in old_cis_vec.iter().zip(tmp.3.iter()) {
-                let dim = new_cis.dim().0 * new_cis.dim().1;
-                let new_flat: ArrayView1<f64> = new_cis.view().into_shape(dim).unwrap();
-                let old_flat: ArrayView1<f64> = old_cis.view().into_shape(dim).unwrap();
-                let val: f64 = new_flat.dot(&old_flat);
-                // println!("val {}", val);
-                if val <= -0.1 {
-                    signs.push(-1.0);
-                } else if val.abs() < 0.1 {
-                    signs.push(0.0)
-                } else {
-                    signs.push(1.0);
-                }
-            }
-        } else {
-            self.cis_vec = tmp.3;
-        }
-        println!("{}", Array::from(signs.clone()));
-        // self.cis_vec = tmp.3;
-        // change the signs of the diabatic coupling matrix
-        // let mut diabatic_couplings: Array2<f64> = tmp.2;
-        // for (i, s_i) in signs.iter().enumerate() {
-        //     for (j, s_j) in signs.iter().enumerate() {
-        //         if i != j {
-        //             diabatic_couplings[[i, j]] = diabatic_couplings[[i, j]] * s_i * s_j;
-        //         }
-        //     }
-        // }
+        // // set old cis_coefficients
+        // let old_cis_vec: &Vec<Array2<f64>> = &self.cis_vec;
+        // // align cis coefficients
+        // let mut signs: Vec<f64> = Vec::new();
+        //if !old_cis_vec.is_empty() {
+        //    for (old_cis, new_cis) in old_cis_vec.iter().zip(tmp.4.iter()) {
+        //        let dim = new_cis.dim().0 * new_cis.dim().1;
+        //        let new_flat: ArrayView1<f64> = new_cis.view().into_shape(dim).unwrap();
+        //        let old_flat: ArrayView1<f64> = old_cis.view().into_shape(dim).unwrap();
+        //        let val: f64 = new_flat.dot(&old_flat);
+        //        // println!("val {}", val);
+        //        if val <= -0.1 {
+        //            signs.push(-1.0);
+        //        } else if val.abs() < 0.1 {
+        //            signs.push(0.0)
+        //        } else {
+        //            signs.push(1.0);
+        //        }
+        //    }
+        //} else {
+        //    self.cis_vec = tmp.4;
+        //}
 
-        // return the excitonic couplings
-        // tmp.1
         // diabatic_couplings
         tmp.2
     }
