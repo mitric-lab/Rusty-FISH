@@ -15,6 +15,8 @@ impl Simulation {
         let mut npz_mo = NpzWriter::new(File::create("mo_arrays.npz").unwrap());
         let mut npz_h = NpzWriter::new(File::create("h_arrays.npz").unwrap());
         let mut npz_x = NpzWriter::new(File::create("x_arrays.npz").unwrap());
+        let mut npz_sign = NpzWriter::new(File::create("sign_arrays.npz").unwrap());
+        let mut npz_sc = NpzWriter::new(File::create("sc_arrays.npz").unwrap());
 
         self.initialize_ehrenfest(
             interface,
@@ -25,6 +27,8 @@ impl Simulation {
             &mut npz_mo,
             &mut npz_h,
             &mut npz_x,
+            &mut npz_sign,
+            &mut npz_sc,
         );
         for step in 1..self.config.nstep {
             self.ehrenfest_step(
@@ -36,6 +40,8 @@ impl Simulation {
                 &mut npz_mo,
                 &mut npz_h,
                 &mut npz_x,
+                &mut npz_sign,
+                &mut npz_sc,
             );
         }
         npz.finish().unwrap();
@@ -44,6 +50,8 @@ impl Simulation {
         npz_mo.finish().unwrap();
         npz_h.finish().unwrap();
         npz_x.finish().unwrap();
+        npz_sign.finish().unwrap();
+        npz_sc.finish().unwrap();
     }
 
     pub fn ehrenfest_step(
@@ -56,20 +64,23 @@ impl Simulation {
         npz_mo: &mut NpzWriter<File>,
         npz_h: &mut NpzWriter<File>,
         npz_x: &mut NpzWriter<File>,
+        npz_sign: &mut NpzWriter<File>,
+        npz_sc: &mut NpzWriter<File>,
     ) {
         let old_forces: Array2<f64> = self.forces.clone();
         let old_energy: f64 = self.energies[self.state] + self.kinetic_energy;
         // calculate the gradient and the excitonic couplings
-        let excitonic_couplings: Array2<f64> =
-            self.get_ehrenfest_data(interface, npz, npz_c, npz_q, npz_mo, npz_h, npz_x, step);
+        let excitonic_couplings: Array2<f64> = self.get_ehrenfest_data(
+            interface, npz, npz_c, npz_q, npz_mo, npz_h, npz_x, npz_sign, npz_sc, step,
+        );
         // convert to complex array
         let excitonic_couplings: Array2<c64> =
             excitonic_couplings.map(|val| val * c64::new(1.0, 0.0));
 
         // ehrenfest procedure
         // self.coefficients = self.ehrenfest_rk_integration(excitonic_couplings.view());
-        // self.coefficients = self.ehrenfest_sod_integration(excitonic_couplings.view());
-        self.coefficients = self.ehrenfest_matrix_exponential(excitonic_couplings.view());
+        self.coefficients = self.ehrenfest_sod_integration(excitonic_couplings.view());
+        // self.coefficients = self.ehrenfest_matrix_exponential_nacme(excitonic_couplings.view());
 
         // Calculate new coordinates from velocity-verlet
         self.velocities = self.get_velocities_verlet(old_forces.view());
@@ -104,6 +115,8 @@ impl Simulation {
         npz_mo: &mut NpzWriter<File>,
         npz_h: &mut NpzWriter<File>,
         npz_x: &mut NpzWriter<File>,
+        npz_sign: &mut NpzWriter<File>,
+        npz_sc: &mut NpzWriter<File>,
     ) {
         // remove COM from coordinates
         self.coordinates = self.shift_to_center_of_mass();
@@ -111,7 +124,9 @@ impl Simulation {
         // remove tranlation and rotation
         self.velocities = self.eliminate_translation_rotation_from_velocity();
         // do the first calculation using the QuantumChemistryInterface
-        self.get_ehrenfest_data(interface, npz, npz_c, npz_q, npz_mo, npz_h, npz_x, step);
+        self.get_ehrenfest_data(
+            interface, npz, npz_c, npz_q, npz_mo, npz_h, npz_x, npz_sign, npz_sc, step,
+        );
 
         // calculate the kinetic energy
         self.kinetic_energy = self.get_kinetic_energy();
@@ -134,6 +149,8 @@ impl Simulation {
         npz_mo: &mut NpzWriter<File>,
         npz_h: &mut NpzWriter<File>,
         npz_x: &mut NpzWriter<File>,
+        npz_sign: &mut NpzWriter<File>,
+        npz_sc: &mut NpzWriter<File>,
         step: usize,
     ) -> Array2<f64> {
         let abs_coefficients: Array1<f64> = self.coefficients.map(|val| val.norm());
@@ -147,6 +164,8 @@ impl Simulation {
             Vec<Array2<f64>>,
             Vec<Array2<f64>>,
             Vec<Array2<f64>>,
+            Array1<f64>,
+            Array1<f64>,
         ) = interface.compute_ehrenfest(
             self.coordinates.view(),
             abs_coefficients.view(),
@@ -163,10 +182,15 @@ impl Simulation {
                 .slice_mut(s![idx, ..])
                 .assign(&(-1.0 * &forces.slice(s![idx, ..]) / mass.to_owned()));
         }
+        // update the nonadiabatic coupling
+        self.nonadiabatic_scalar = tmp.3;
+
         if self.config.ehrenfest_config.use_restraint {
             self.apply_harmonic_restraint();
         }
         npz.add_array(step.to_string(), &tmp.2).unwrap();
+        npz_sign.add_array(step.to_string(), &tmp.9).unwrap();
+        npz_sc.add_array(step.to_string(), &tmp.10).unwrap();
         for (idx, arr) in tmp.4.iter().enumerate() {
             let mut string: String = step.to_string();
             string.push_str(&String::from("-"));
@@ -197,28 +221,6 @@ impl Simulation {
             string.push_str(&idx.to_string());
             npz_x.add_array(string, arr).unwrap();
         }
-        // // set old cis_coefficients
-        // let old_cis_vec: &Vec<Array2<f64>> = &self.cis_vec;
-        // // align cis coefficients
-        // let mut signs: Vec<f64> = Vec::new();
-        //if !old_cis_vec.is_empty() {
-        //    for (old_cis, new_cis) in old_cis_vec.iter().zip(tmp.4.iter()) {
-        //        let dim = new_cis.dim().0 * new_cis.dim().1;
-        //        let new_flat: ArrayView1<f64> = new_cis.view().into_shape(dim).unwrap();
-        //        let old_flat: ArrayView1<f64> = old_cis.view().into_shape(dim).unwrap();
-        //        let val: f64 = new_flat.dot(&old_flat);
-        //        // println!("val {}", val);
-        //        if val <= -0.1 {
-        //            signs.push(-1.0);
-        //        } else if val.abs() < 0.1 {
-        //            signs.push(0.0)
-        //        } else {
-        //            signs.push(1.0);
-        //        }
-        //    }
-        //} else {
-        //    self.cis_vec = tmp.4;
-        //}
 
         // diabatic_couplings
         tmp.2

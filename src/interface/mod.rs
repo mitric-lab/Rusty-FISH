@@ -28,5 +28,7 @@ pub trait QuantumChemistryInterface {
         Vec<Array2<f64>>,
         Vec<Array2<f64>>,
         Vec<Array2<f64>>,
+        Array1<f64>,
+        Array1<f64>,
     );
 }

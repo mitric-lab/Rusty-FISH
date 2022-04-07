@@ -13,6 +13,20 @@ impl Simulation {
         mat.dot(&self.coefficients)
     }
 
+    pub fn ehrenfest_matrix_exponential_nacme(
+        &self,
+        exciton_couplings: ArrayView2<c64>,
+    ) -> Array1<c64> {
+        let mut mat: Array2<c64> =
+            &(c64::new(0.0, 1.0) * &exciton_couplings) - &self.nonadiabatic_scalar;
+        mat = mat * (-1.0 * self.stepsize);
+        let (eig, eig_vec): (Array1<c64>, Array2<c64>) = mat.eig().unwrap();
+        let diag: Array1<c64> = eig.mapv(|val| val.exp());
+        let mat: Array2<c64> = eig_vec.dot(&Array::from_diag(&diag).dot(&eig_vec.inv().unwrap()));
+
+        mat.dot(&self.coefficients)
+    }
+
     pub fn ehrenfest_sod_integration(&self, exciton_couplings: ArrayView2<c64>) -> Array1<c64> {
         // set the stepsize of the RK-integration
         let n_delta: usize = self.config.ehrenfest_config.integration_steps;
@@ -21,7 +35,7 @@ impl Simulation {
         let mut coefficients: Array1<c64> = self.coefficients.clone();
         let mut prev: Array1<c64> = self.initialize_sod(dt, exciton_couplings.view());
         for _i in 0..n_delta {
-            let new_coefficients = self.sod_step(
+            let new_coefficients = self.sod_step_nacme(
                 dt,
                 exciton_couplings.view(),
                 coefficients.view(),
@@ -43,28 +57,56 @@ impl Simulation {
         &prev_coeff - 2.0 * c64::new(0.0, 1.0) * dt * coeff.dot(&exciton_couplings)
     }
 
+    fn sod_step_nacme(
+        &self,
+        dt: f64,
+        exciton_couplings: ArrayView2<c64>,
+        coeff: ArrayView1<c64>,
+        prev_coeff: ArrayView1<c64>,
+    ) -> Array1<c64> {
+        &prev_coeff
+            - (&(c64::new(0.0, 1.0) * &exciton_couplings) - &self.nonadiabatic_scalar).dot(&coeff)
+                * 2.0
+                * dt
+    }
+
     fn initialize_sod(&self, dt: f64, exciton_couplings: ArrayView2<c64>) -> Array1<c64> {
         &self.coefficients + c64::new(0.0, 1.0) * dt * self.coefficients.dot(&exciton_couplings)
     }
 
+    fn initialize_sod_nacme(&self, dt: f64, exciton_couplings: ArrayView2<c64>) -> Array1<c64> {
+        &self.coefficients
+            + (&(c64::new(0.0, 1.0) * &exciton_couplings) - &self.nonadiabatic_scalar)
+                .dot(&self.coefficients)
+                * dt
+    }
     pub fn ehrenfest_rk_integration(&self, excitonic_couplings: ArrayView2<c64>) -> Array1<c64> {
         // set the stepsize of the RK-integration
         let n_delta: usize = self.config.hopping_config.integration_steps;
         // let delta_rk: f64 = self.stepsize / n_delta as f64;
-        let delta_rk: f64 = 1.0 / n_delta as f64;
+        let delta_rk: f64 = self.stepsize / n_delta as f64;
 
         // start the Runge-Kutta integration
         let mut old_coefficients: Array1<c64> = self.coefficients.clone();
-        for _i in 0..n_delta {
+        for i in 0..n_delta {
             // do one step of the integration
-            let new_coefficients: Array1<c64> = self.runge_kutta_ehrenfest(
-                old_coefficients.view(),
-                delta_rk,
-                excitonic_couplings.view(),
-            );
+            let t_i: f64 = i as f64 * delta_rk;
+            let new_coefficients: Array1<c64> =
+                self.runge_kutta_ehrenfest(old_coefficients.view(), delta_rk, t_i);
             old_coefficients = new_coefficients;
         }
-        old_coefficients
+        // calculate the new coefficients
+        // calculate the matrix exponential of the excitionic couplings
+        let mat: Array2<c64> =
+            excitonic_couplings.mapv(|val| -c64::new(0.0, 1.0) * val * self.stepsize);
+        let (eig, eig_vec): (Array1<c64>, Array2<c64>) = mat.eig().unwrap();
+        let diag: Array1<c64> = eig.mapv(|val| val.exp());
+        let mat: Array2<c64> = eig_vec.dot(&Array::from_diag(&diag).dot(&eig_vec.inv().unwrap()));
+        // multiply the excitionic coupling matrix with the coefficients obtained from the RK
+        // rotuine
+        let c_new: Array1<c64> = old_coefficients * mat.dot(&self.coefficients);
+
+        c_new
     }
 
     /// Calculate one step of the 4th order Runge-Kutta method
@@ -72,21 +114,21 @@ impl Simulation {
         &self,
         coefficients: ArrayView1<c64>,
         delta_rk: f64,
-        excitonic_couplings: ArrayView2<c64>,
+        time: f64,
     ) -> Array1<c64> {
-        let mut k_1: Array1<c64> = self.rk_ehrenfest_helper(coefficients, excitonic_couplings);
+        let mut k_1: Array1<c64> = self.rk_ehrenfest_helper(coefficients, time);
         k_1 = k_1 * delta_rk;
         let tmp: Array1<c64> = &coefficients + &(&k_1 * 0.5);
 
-        let mut k_2: Array1<c64> = self.rk_ehrenfest_helper(tmp.view(), excitonic_couplings);
+        let mut k_2: Array1<c64> = self.rk_ehrenfest_helper(tmp.view(), time + 0.5 * delta_rk);
         k_2 = k_2 * delta_rk;
         let tmp: Array1<c64> = &coefficients + &(&k_2 * 0.5);
 
-        let mut k_3: Array1<c64> = self.rk_ehrenfest_helper(tmp.view(), excitonic_couplings);
+        let mut k_3: Array1<c64> = self.rk_ehrenfest_helper(tmp.view(), time + 0.5 * delta_rk);
         k_3 = k_3 * delta_rk;
-        let tmp: Array1<c64> = &coefficients + &(&k_3 * 0.5);
+        let tmp: Array1<c64> = &coefficients + &k_3;
 
-        let mut k_4: Array1<c64> = self.rk_ehrenfest_helper(tmp.view(), excitonic_couplings);
+        let mut k_4: Array1<c64> = self.rk_ehrenfest_helper(tmp.view(), time + delta_rk);
         k_4 = k_4 * delta_rk;
 
         let new_coefficients: Array1<c64> =
@@ -95,12 +137,17 @@ impl Simulation {
     }
 
     /// Calculate a coeffiecient k of the runge kutta method
-    fn rk_ehrenfest_helper(
-        &self,
-        coefficients: ArrayView1<c64>,
-        excitonic_couplings: ArrayView2<c64>,
-    ) -> Array1<c64> {
-        let f_new: Array1<c64> = coefficients.dot(&excitonic_couplings);
+    fn rk_ehrenfest_helper(&self, coefficients: ArrayView1<c64>, time: f64) -> Array1<c64> {
+        let nstates: usize = self.config.nstates;
+        // create energy difference array
+        let energy_arr_tmp: Array2<f64> = self.energies.clone().insert_axis(Axis(1));
+        let mesh_1: ArrayView2<f64> = energy_arr_tmp.broadcast((nstates, nstates)).unwrap();
+        let energy_difference: Array2<f64> = &mesh_1.clone() - &mesh_1.t();
+
+        // alternative way instead of iteration
+        let de: Array2<c64> = energy_difference.mapv(|val| (c64::new(0.0, 1.0) * val * time).exp());
+        let h: Array2<c64> = de * (-1.0 * &self.nonadiabatic_scalar);
+        let f_new: Array1<c64> = h.dot(&coefficients);
 
         f_new
     }
