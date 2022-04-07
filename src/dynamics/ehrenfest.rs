@@ -78,8 +78,8 @@ impl Simulation {
             excitonic_couplings.map(|val| val * c64::new(1.0, 0.0));
 
         // ehrenfest procedure
-        // self.coefficients = self.ehrenfest_rk_integration(excitonic_couplings.view());
-        self.coefficients = self.ehrenfest_sod_integration(excitonic_couplings.view());
+        self.coefficients = self.ehrenfest_rk_integration(excitonic_couplings.view());
+        //self.coefficients = self.ehrenfest_sod_integration(excitonic_couplings.view());
         // self.coefficients = self.ehrenfest_matrix_exponential_nacme(excitonic_couplings.view());
 
         // Calculate new coordinates from velocity-verlet
@@ -172,10 +172,12 @@ impl Simulation {
             self.config.ehrenfest_config.state_threshold,
             self.config.stepsize,
         );
-
         self.energies[0] = tmp.0;
-        // self.energies = tmp.1.diag().to_owned();
+        self.energies
+            .slice_mut(s![1..])
+            .assign(&(&tmp.2.diag().slice(s![1..]) + tmp.0));
         // let forces: Array2<f64> = tmp.0;
+
         let forces: Array2<f64> = tmp.1;
         for (idx, mass) in self.masses.iter().enumerate() {
             self.forces
@@ -183,7 +185,7 @@ impl Simulation {
                 .assign(&(-1.0 * &forces.slice(s![idx, ..]) / mass.to_owned()));
         }
         // update the nonadiabatic coupling
-        self.nonadiabatic_scalar = tmp.3;
+        // self.nonadiabatic_scalar = tmp.3;
 
         if self.config.ehrenfest_config.use_restraint {
             self.apply_harmonic_restraint();
