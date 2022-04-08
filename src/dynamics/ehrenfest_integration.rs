@@ -33,15 +33,14 @@ impl Simulation {
         let n_delta: usize = self.config.ehrenfest_config.integration_steps;
         let dt: f64 = self.stepsize / n_delta as f64;
 
+        // difference between couplings and nonadiabatic couplings
+        let arr: Array2<c64> =
+            &(c64::new(0.0, 1.0) * &exciton_couplings) - &self.nonadiabatic_scalar;
+
         let mut coefficients: Array1<c64> = self.coefficients.clone();
-        let mut prev: Array1<c64> = self.initialize_sod(dt, exciton_couplings.view());
+        let mut prev: Array1<c64> = self.initialize_sod(dt, arr.view());
         for _i in 0..n_delta {
-            let new_coefficients = self.sod_step_nacme(
-                dt,
-                exciton_couplings.view(),
-                coefficients.view(),
-                prev.view(),
-            );
+            let new_coefficients = self.sod_step(dt, arr.view(), coefficients.view(), prev.view());
             prev = coefficients;
             coefficients = new_coefficients;
         }
@@ -51,36 +50,17 @@ impl Simulation {
     fn sod_step(
         &self,
         dt: f64,
-        exciton_couplings: ArrayView2<c64>,
+        arr: ArrayView2<c64>,
         coeff: ArrayView1<c64>,
         prev_coeff: ArrayView1<c64>,
     ) -> Array1<c64> {
-        &prev_coeff - 2.0 * c64::new(0.0, 1.0) * dt * coeff.dot(&exciton_couplings)
+        &prev_coeff - arr.dot(&coeff) * 2.0 * dt
     }
 
-    fn sod_step_nacme(
-        &self,
-        dt: f64,
-        exciton_couplings: ArrayView2<c64>,
-        coeff: ArrayView1<c64>,
-        prev_coeff: ArrayView1<c64>,
-    ) -> Array1<c64> {
-        &prev_coeff
-            - (&(c64::new(0.0, 1.0) * &exciton_couplings) - &self.nonadiabatic_scalar).dot(&coeff)
-                * 2.0
-                * dt
+    fn initialize_sod(&self, dt: f64, arr: ArrayView2<c64>) -> Array1<c64> {
+        &self.coefficients + arr.dot(&self.coefficients) * dt
     }
 
-    fn initialize_sod(&self, dt: f64, exciton_couplings: ArrayView2<c64>) -> Array1<c64> {
-        &self.coefficients + c64::new(0.0, 1.0) * dt * self.coefficients.dot(&exciton_couplings)
-    }
-
-    fn initialize_sod_nacme(&self, dt: f64, exciton_couplings: ArrayView2<c64>) -> Array1<c64> {
-        &self.coefficients
-            + (&(c64::new(0.0, 1.0) * &exciton_couplings) - &self.nonadiabatic_scalar)
-                .dot(&self.coefficients)
-                * dt
-    }
     pub fn ehrenfest_rk_integration(&self, excitonic_couplings: ArrayView2<c64>) -> Array1<c64> {
         // set the stepsize of the RK-integration
         let n_delta: usize = self.config.ehrenfest_config.integration_steps;
