@@ -80,8 +80,8 @@ impl Simulation {
 
         let timer: Instant = Instant::now();
         // ehrenfest procedure
-        // self.coefficients = self.ehrenfest_rk_integration(excitonic_couplings.view());
-        self.coefficients = self.ehrenfest_sod_integration(excitonic_couplings.view());
+        self.coefficients = self.ehrenfest_rk(excitonic_couplings.view());
+        // self.coefficients = self.ehrenfest_sod_integration(excitonic_couplings.view());
         // self.coefficients = self.ehrenfest_matrix_exponential_nacme(excitonic_couplings.view());
         println!("Time integration {} \n", timer.elapsed().as_secs_f64());
 
