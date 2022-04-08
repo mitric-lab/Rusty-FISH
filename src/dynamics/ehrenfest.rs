@@ -78,12 +78,10 @@ impl Simulation {
         let excitonic_couplings: Array2<c64> =
             excitonic_couplings.map(|val| val * c64::new(1.0, 0.0));
 
-        let timer: Instant = Instant::now();
         // ehrenfest procedure
         self.coefficients = self.ehrenfest_rk(excitonic_couplings.view());
         // self.coefficients = self.ehrenfest_sod_integration(excitonic_couplings.view());
         // self.coefficients = self.ehrenfest_matrix_exponential_nacme(excitonic_couplings.view());
-        println!("Time integration {} \n", timer.elapsed().as_secs_f64());
 
         // Calculate new coordinates from velocity-verlet
         self.velocities = self.get_velocities_verlet(old_forces.view());
@@ -188,7 +186,7 @@ impl Simulation {
                 .assign(&(-1.0 * &forces.slice(s![idx, ..]) / mass.to_owned()));
         }
         // update the nonadiabatic coupling
-        self.nonadiabatic_scalar = tmp.3;
+        // self.nonadiabatic_scalar = tmp.3;
 
         if self.config.ehrenfest_config.use_restraint {
             self.apply_harmonic_restraint();
